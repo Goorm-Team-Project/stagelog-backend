@@ -1,12 +1,14 @@
 from pathlib import Path
 import os
 import environ
+import sys
 
 # 1. 환경변수
 env = environ.Env(
     DEBUG=(bool, False)
 )
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env('SECRET_KEY')

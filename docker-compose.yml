@@ -1,6 +1,6 @@
 services:
   db:
-    image: mariadb:11.3.8
+    image: mariadb:11.8.3
     container_name: stagelog-db
     environment:
       MARIADB_DATABASE: stagelog
