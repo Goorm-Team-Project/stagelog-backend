@@ -1,0 +1,96 @@
+from pathlib import Path
+import os
+import environ
+
+# 1. 환경변수
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+# 2. 앱 설정 (DRF, SimpleJWT 제거)
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    # Third Party
+    'corsheaders', # CORS는 필수
+
+    # Local Apps
+    'users',
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # 최상단
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+WSGI_APPLICATION = 'config.wsgi.application'
+
+# 3. 데이터베이스 (MariaDB)
+DATABASES = {
+    'default': env.db(),
+}
+
+# 4. 커스텀 유저 모델
+AUTH_USER_MODEL = 'users.User' 
+
+# 5. 비밀번호 검증
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# 6. 언어 및 시간
+LANGUAGE_CODE = 'ko-kr'
+TIME_ZONE = 'Asia/Seoul'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = 'static/'
+
+# 7. Trailing Slash 제거
+APPEND_SLASH = False
+
+# 8. CORS 설정
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
+
+# 9. JWT 설정 (수동 구현용 변수)
+# SimpleJWT 설정은 제거하고, 직접 구현 시 사용할 알고리즘/만료시간만 환경변수나 상수로 관리 추천
+JWT_ALGORITHM = 'HS256'
+JWT_EXP_DELTA_SECONDS = 60 * 30  # 30분

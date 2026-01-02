@@ -1,4 +1,12 @@
+# 가상 환경
 .venv/
+
+# 파이썬 관련 파일
 __pycache__/
 *.py[cod]
+
+# db
 db.sqlite3
+
+# 개발 환경
+.env
