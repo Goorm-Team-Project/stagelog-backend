@@ -51,10 +51,10 @@ def events_list(request):
     try:
         page = int(request.GET.get("page") or 1)
         size = int(request.GET.get("size") or 10)
-    except: ValueError:
+    except ValueError:
         return common_response(False, message="page/size는 정수여야 합니다.", status=400)
     
-    if page <= 0 size <= 0 or size > 100:
+    if page <= 0 or size <= 0 or size > 100:
         return common_response(False, message="page는 1 이상, size는 1~100 범위에 포함되어야 합니다.", status=400)
     
     qs = Event.objects.all()
