@@ -19,7 +19,7 @@ def common_response(success=True, data=None, message="", status=200):
         "data": data,
     }
     # status 코드는 HTTP 응답 헤더에 설정됨
-    return JsonResponse(payload, status=status)
+    return JsonResponse(payload, status=status, json_dumps_params={'ensure_ascii': False})
 
 # 2. 액세스 토큰 생성 함수
 def create_access_token(user_id):
