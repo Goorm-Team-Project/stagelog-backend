@@ -43,7 +43,7 @@ def _event_detail(e: Event) -> dict:
 
 
 @require_GET
-def events_list(request):
+def event_list(request):
     search = (request.GET.get("search") or "").strip()
     sort = (request.GET.get("sort") or "name").strip().lower()
 
