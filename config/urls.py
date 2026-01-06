@@ -19,7 +19,11 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
+    # merge 충돌 제거
+    # Auth / Users (login 라우팅)
     path('api/auth/', include('users.urls')),
     path('api/users/', include('users.urls')),
+
+    # Events (events 라우팅)
+    path('api/events/', include('events.urls')),
 ]
