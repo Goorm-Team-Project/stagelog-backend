@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import kakao_login, me, signup, kakao_test_page, kakao_callback_test
+from .views import kakao_login, me, signup, kakao_test_page, kakao_callback_test, get_user_info
 
 urlpatterns = [
     path('login/kakao', kakao_login, name='kakao_login'),
