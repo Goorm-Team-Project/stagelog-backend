@@ -8,11 +8,13 @@ class UserManager(BaseUserManager):
         nickname, 
         provider,
         provider_id,
-        is_email_sub, 
-        is_events_notification_sub, 
-        is_posts_notification_sub, 
+        # [수정] 기본값 False 지정 (안 넣어도 에러 안 나게)
+        is_email_sub=False, 
+        is_events_notification_sub=False, 
+        is_posts_notification_sub=False, 
         password=None, 
-        **extra_fields):
+        **extra_fields
+    ):
         if not email:
             raise ValueError('이메일은 필수입니다.')
         
@@ -37,55 +39,58 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, nickname, password=None, **extra_fields):
-        # 슈퍼유저는 관리자 권한 필수
+        # [수정] 관리자 생성 시 필수 값 강제 설정
         extra_fields.setdefault('is_admin', True)
         extra_fields.setdefault('is_superuser', True)
         
-        # 관리자 계정은 provider 정보가 딱히 없으니 임의로 설정
+        # [수정] 알림 설정값도 기본으로 넘겨줘야 함 (True/False 취향껏)
+        extra_fields.setdefault('is_email_sub', False)
+        extra_fields.setdefault('is_events_notification_sub', False)
+        extra_fields.setdefault('is_posts_notification_sub', False)
+
+        # 관리자 계정 생성
         return self.create_user(
             email=email,
             nickname=nickname,
-            provider='local',      # 관리자는 로컬 생성
-            provider_id='admin',   # 관리자 ID 식별자
+            provider='admin',
+            provider_id='admin',
             password=password,
             **extra_fields
         )
 
 class User(AbstractBaseUser, PermissionsMixin):
-    # --- [ERD 기반 필드 작성] -------------------------
+    # --- [ERD 기반 필드] ---
     email = models.EmailField(unique=True, max_length=255)
     nickname = models.CharField(max_length=30)
     
     # OAuth 관련
     provider = models.CharField(max_length=255)
-    provider_id = models.CharField(max_length=255) # 소셜 제공자의 고유 ID
+    provider_id = models.CharField(max_length=255)
     
     # 시간
     created_at = models.DateTimeField(auto_now_add=True)
     
-    # 알림 동의 여부 (기본값 True 설정)
+    # 알림 동의 여부
     is_email_sub = models.BooleanField(default=False)
     is_events_notification_sub = models.BooleanField(default=False)
     is_posts_notification_sub = models.BooleanField(default=False)
     
     # 권한 및 상태
-    is_admin = models.BooleanField(default=False) # ERD의 is_admin
+    is_admin = models.BooleanField(default=False)
     
-    # 게임 요소 (경험치, 레벨, 신뢰도) - 초기값 0, 1 설정
+    # 게임 요소 (경험치, 레벨, 신뢰도)
     exp = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
     reliability_score = models.IntegerField(default=50)
-    # ------------------------------------------------
 
     # [Django 필수 필드]
-    is_active = models.BooleanField(default=True) # 로그인 가능 여부
+    is_active = models.BooleanField(default=True)
 
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nickname'] # 슈퍼유저 생성 시 추가로 물어볼 필드
+    REQUIRED_FIELDS = ['nickname'] # 슈퍼유저 생성 시 닉네임도 물어봄
 
-    # Django Admin 페이지 접속 권한을 is_admin 필드와 연결
     @property
     def is_staff(self):
         return self.is_admin

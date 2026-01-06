@@ -178,7 +178,8 @@ def signup(request):
             provider_id=provider_id,
             is_email_sub=is_email_sub,
             is_events_notification_sub=is_events_notification_sub,
-            is_posts_notification_sub=is_posts_notification_sub
+            is_posts_notification_sub=is_posts_notification_sub,
+            
         )
 
         # 5. 로그인 토큰 발급
@@ -214,3 +215,36 @@ def me(request):
         )
     except User.DoesNotExist:
         return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
+
+#/api/user/me 내 정보 조회
+@login_check
+def get_user_info(request):
+    try:
+        user_id = request.user_id #데코레이터에서 받아옴
+        
+        user = User.objects.get(id=user_id) # db에서 해당하는 user id 의 정보 가져오기
+
+        return common_response(
+            success=True,
+            message="정보 조회 성공",
+            data={
+                "id": user.id,
+                "email": user.email,
+                "nickname": user.nickname,
+                "provider": user.provider,
+                "provider_id": user.provider_id,
+                "created_at": user.created_at,
+                "is_email_sub": user.is_email_sub,
+                "is_events_notification_sub": user.is_events_notification_sub,
+                "is_posts_notification_sub": user.is_posts_notification_sub,
+                "is_admin": user.is_admin,
+                "exp": user.exp,
+                "level": user.level,
+                "reliability_score": user.reliability_score
+            },
+            status=200
+        )
+    except User.DoesNotExist:
+        return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
+    except Exception as e:
+        return common_response(success=False, message="정보 조회 중 서버 오류 발생", status=500)
