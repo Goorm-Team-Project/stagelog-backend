@@ -2,7 +2,17 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, nickname, provider, provider_id, password=None, **extra_fields):
+    def create_user(
+        self, 
+        email, 
+        nickname, 
+        provider,
+        provider_id,
+        is_email_sub, 
+        is_events_notification_sub, 
+        is_posts_notification_sub, 
+        password=None, 
+        **extra_fields):
         if not email:
             raise ValueError('이메일은 필수입니다.')
         
@@ -12,6 +22,9 @@ class UserManager(BaseUserManager):
             nickname=nickname,
             provider=provider,
             provider_id=provider_id,
+            is_email_sub=is_email_sub,
+            is_events_notification_sub=is_events_notification_sub,
+            is_posts_notification_sub=is_posts_notification_sub,
             **extra_fields
         )
         
@@ -51,9 +64,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     
     # 알림 동의 여부 (기본값 True 설정)
-    is_email_sub = models.BooleanField(default=True)
-    is_events_notification_sub = models.BooleanField(default=True)
-    is_posts_notification_sub = models.BooleanField(default=True)
+    is_email_sub = models.BooleanField(default=False)
+    is_events_notification_sub = models.BooleanField(default=False)
+    is_posts_notification_sub = models.BooleanField(default=False)
     
     # 권한 및 상태
     is_admin = models.BooleanField(default=False) # ERD의 is_admin

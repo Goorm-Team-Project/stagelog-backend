@@ -139,6 +139,9 @@ def signup(request):
         register_token = data.get('register_token')
         input_nickname = data.get('nickname')
         input_email = data.get('email')
+        is_email_sub = data.get('is_email_sub', False)
+        is_events_notification_sub = data.get('is_events_notification_sub', False)
+        is_posts_notification_sub = data.get('is_posts_notification_sub', False)
 
         if not register_token or not input_nickname or not input_email:
             return common_response(success=False, message="필수 정보가 없습니다.", status=400)
@@ -172,7 +175,10 @@ def signup(request):
             email=input_email,
             nickname=input_nickname,
             provider=provider,
-            provider_id=provider_id
+            provider_id=provider_id,
+            is_email_sub=is_email_sub,
+            is_events_notification_sub=is_events_notification_sub,
+            is_posts_notification_sub=is_posts_notification_sub
         )
 
         # 5. 로그인 토큰 발급
