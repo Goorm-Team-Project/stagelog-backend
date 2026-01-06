@@ -48,27 +48,29 @@ def kakao_login(request):
     https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api 참고
     """
     try:
-        data = json.loads(request.body)
-        code = data.get('code') #카카오에서 발급 인가 코드
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
+        
+        code = data.get('code') #카카오에서 발급한 인가 코드
         if not code:
             return common_response(success=False, message="인가 코드 에러.", status=400)
 
         access_token_req_url = "https://kauth.kakao.com/oauth/token" #POST 요청 사용
-        KAKAO_ACCESS_TOKEN_CLIENT_SECRET = settings.KAKAO_ACCESS_TOKEN_CLIENT_SECRET
-        KAKAO_REST_API_KEY = settings.KAKAO_REST_API_KEY
-        KAKAO_REDIRECT_URI = settings.KAKAO_REDIRECT_URI
         
         access_token_req_data = {
             "grant_type": "authorization_code",
-            "client_id" : KAKAO_REST_API_KEY,
-            "redirect_uri" : KAKAO_REDIRECT_URI,
+            "client_id" : settings.KAKAO_REST_API_KEY,
+            "redirect_uri" : settings.KAKAO_REDIRECT_URI,
             "code" : code,
-            "client_secret" : KAKAO_ACCESS_TOKEN_CLIENT_SECRET
+            "client_secret" : settings.KAKAO_ACCESS_TOKEN_CLIENT_SECRET
         }
 
         token_res = requests.post(access_token_req_url, data=access_token_req_data)
 
         if token_res.status_code != 200:
+            print(f"Kakao token error: {toekn.res.json()}", flush=True)
             return common_response(success=False, message="카카오 액세스 토큰 발급 실패", status=400)
         
         """
@@ -82,7 +84,8 @@ def kakao_login(request):
         users_res = requests.get(user_info_url, headers=headers)
 
         if users_res.status_code != 200:
-            return common_response(success=False, message="사용자 정보 조회 실패", status=400)
+            print(f"Kakao User Info Error: {users_res.json()}", flush=True)
+            return common_response(success=False, message="사용자 정보 조회 실패", status=500)
 
         user_info = users_res.json()
         provider_id = str(user_info.get('id'))
@@ -103,7 +106,7 @@ def kakao_login(request):
                 message=f"{user.nickname} 님! 환영합니다!",
                 data={
                     "access_token": jwt_access_token
-                }
+                },
                 status=200)
         
         else:
@@ -127,10 +130,18 @@ def kakao_login(request):
 @csrf_exempt
 def signup(request):
     try:
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
+
+
         register_token = data.get('register_token')
         input_nickname = data.get('nickname')
         input_email = data.get('email')
+
+        if not register_token or not input_nickname or not input_email:
+            return common_response(success=False, message="필수 정보가 없습니다.", status=400)
         
         # 1. 토큰 검사
         if not register_token:
@@ -167,7 +178,12 @@ def signup(request):
         # 5. 로그인 토큰 발급
         access_token = create_access_token(user.id)
         
-        return common_response(success=True, message="가입 완료", data={"access_token": access_token})
+        return common_response(
+            success=True,
+            message="가입 완료", 
+            data={"access_token": access_token},
+            status=201
+        )
 
     except Exception as e:
         traceback.print_exc(file=sys.stdout)
