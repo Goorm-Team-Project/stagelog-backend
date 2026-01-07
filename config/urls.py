@@ -26,4 +26,7 @@ urlpatterns = [
 
     # Events (events 라우팅)
     path('api/events/', include('events.urls')),
+
+    # Posts (posts 라우팅)
+    path('api/posts/', include('posts.urls')),
 ]
