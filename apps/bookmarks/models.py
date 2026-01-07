@@ -13,7 +13,7 @@ class Bookmark(models.Model):
         'events.Event',
         on_delete=models.CASCADE,
         related_name='bookmarked_by',
-        db_column='events_id'
+        db_column='event_id'
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -23,4 +23,4 @@ class Bookmark(models.Model):
         unique_together = (('user', 'event'),)
 
     def __str__(self):
-        return f"User[{self.user_id}] - Event[{self.events_id}]"
+        return f"User[{self.user_id}] - Event[{self.event_id}]"
