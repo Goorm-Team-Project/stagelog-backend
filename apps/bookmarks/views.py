@@ -18,7 +18,7 @@ def toggle_bookmark(request, event_id):
         
         # 1. 유저 & 공연 객체 조회
         try:
-            user = User.objects.get(id=user_id)
+            user = User.objects.get(user_id=user_id)
             event = Event.objects.get(event_id=event_id)
         except (User.DoesNotExist, Event.DoesNotExist):
             return common_response(False, message="잘못된 요청입니다(유저 또는 공연 없음).", status=404)

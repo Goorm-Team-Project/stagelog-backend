@@ -101,7 +101,7 @@ def kakao_login(request):
         존재하는 유저 로그인 성공
         """
         if user:
-            jwt_access_token = create_access_token(user.id)
+            jwt_access_token = create_access_token(user.user_id)
             return common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
@@ -111,6 +111,7 @@ def kakao_login(request):
                 status=200)
         
         else:
+            email=None
             try:
                 register_token = create_register_token("kakao", provider_id, email)
             except Exception as e:
@@ -184,7 +185,7 @@ def signup(request):
         )
 
         # 5. 로그인 토큰 발급
-        access_token = create_access_token(user.id)
+        access_token = create_access_token(user.user_id)
         
         return common_response(
             success=True,
@@ -208,7 +209,7 @@ def me(request):
             success=True, 
             message="조회 성공",
             data={
-                "id": user.id, 
+                "id": user.user_id, 
                 "email": user.email, 
                 "nickname": user.nickname,
                 "role": "admin" if user.is_admin else "user"
@@ -223,7 +224,7 @@ def get_user_info(request):
     try:
         user_id = request.user_id #데코레이터에서 받아옴
         
-        user = User.objects.get(id=user_id) # db에서 해당하는 user id 의 정보 가져오기
+        user = User.objects.get(user_id=user_id) # db에서 해당하는 user id 의 정보 가져오기
 
         bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
 
@@ -231,7 +232,7 @@ def get_user_info(request):
             success=True,
             message="정보 조회 성공",
             data={
-                "id": user.id,
+                "id": user.user_id,
                 "email": user.email,
                 "nickname": user.nickname,
                 "provider": user.provider,
@@ -259,10 +260,10 @@ def get_user_info(request):
 @login_check
 def get_other_user_info(request, user_id):
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(user_id=user_id)
 
         public_data = {
-            "id": user.id,
+            "id": user.user_id,
             "nickname": user.nickname,
             "level": user.level,
             #"reliability_score": user.reliability_score,
@@ -287,7 +288,7 @@ def get_other_user_info(request, user_id):
 def update_user_profile(request):
     try:
         user_id = request.user_id
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(user_id=user_id)
 
         try:
             body = json.loads(request.body)
@@ -318,7 +319,7 @@ def update_user_profile(request):
             success=True,
             message="정보 수정 성공",
             data={
-                "id": user.id,
+                "id": user.user_id,
                 "email": user.email,
                 "nickname": user.nickname,
                 "provider": user.provider,

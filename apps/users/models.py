@@ -59,7 +59,10 @@ class UserManager(BaseUserManager):
         )
 
 class User(AbstractBaseUser, PermissionsMixin):
+    user_id = models.AutoField(primary_key=True)
+    
     # --- [ERD 기반 필드] ---
+
     email = models.EmailField(unique=True, max_length=255)
     nickname = models.CharField(max_length=30)
     

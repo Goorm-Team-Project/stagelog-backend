@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 
 class Bookmark(models.Model):
+    bookmark_id = models.AutoField(primary_key=True)
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -15,8 +17,6 @@ class Bookmark(models.Model):
         related_name='bookmarked_by',
         db_column='event_id'
     )
-
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'bookmark'
