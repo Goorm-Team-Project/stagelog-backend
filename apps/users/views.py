@@ -224,6 +224,8 @@ def get_user_info(request):
         
         user = User.objects.get(id=user_id) # db에서 해당하는 user id 의 정보 가져오기
 
+        bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
+
         return common_response(
             success=True,
             message="정보 조회 성공",
@@ -240,7 +242,8 @@ def get_user_info(request):
                 "is_admin": user.is_admin,
                 "exp": user.exp,
                 "level": user.level,
-                "reliability_score": user.reliability_score
+                "reliability_score": user.reliability_score,
+                "bookmarks": bookmarked_id
             },
             status=200
         )
