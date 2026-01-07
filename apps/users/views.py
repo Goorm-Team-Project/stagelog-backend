@@ -278,7 +278,65 @@ def get_other_user_info(request, user_id):
         )
 
     except User.DoesNotExist:
-        return common_response(False, message="존재하지 않는 유저입니다.", status=404)
+        return common_response(success=False, message="존재하지 않는 유저입니다.", status=404)
     except Exception as e:
-        return common_response(False, message="서버 에러", status=500)
+        return common_response(success=False, message="서버 에러", status=500)
+
+@csrf_exempt
+@login_check
+def update_user_profile(request):
+    try:
+        user_id = request.user_id
+        user = User.objects.get(id=user_id)
+
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식입니다.", status=404)
         
+        if 'nickname' in body:
+            new_nickname = body['nickname']
+            if user.nickname != new_nickname:
+                if User.objects.filter(nickname=new_nickname).exists():
+                    return common_response(success=False, message="이미 존재하는 닉네임입니다.", status=409)
+                user.nickname = new_nickname
+
+        if 'is_email_sub' in body:
+            user.is_email_sub = body['is_email_sub']
+
+        if 'is_events_notification_sub' in body:
+            user.is_events_notification_sub = body['is_events_notification_sub']
+
+        if 'is_posts_notification_sub' in body:
+            user.is_posts_notification_sub = body['is_posts_notification_sub']
+
+        user.save()
+
+        bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
+
+        return common_response(
+            success=True,
+            message="정보 수정 성공",
+            data={
+                "id": user.id,
+                "email": user.email,
+                "nickname": user.nickname,
+                "provider": user.provider,
+                "provider_id": user.provider_id,
+                "created_at": user.created_at,
+                "is_email_sub": user.is_email_sub,
+                "is_events_notification_sub": user.is_events_notification_sub,
+                "is_posts_notification_sub": user.is_posts_notification_sub,
+                "is_admin": user.is_admin,
+                "exp": user.exp,
+                "level": user.level,
+                "reliability_score": user.reliability_score,
+                "bookmarks": bookmarked_id
+                #뱃지는 테이블 생성 후에
+            },
+            status=200
+        )
+    except User.DoesNotExist:
+        return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
+    except Exception as e:
+        return common_response(success=False, message="서버 에러", status=500)
