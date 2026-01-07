@@ -24,6 +24,9 @@ urlpatterns = [
     path('api/auth/', include('users.urls')),
     path('api/users/', include('users.urls')),
 
+    # 즐겨찾기 라우팅
+    path('api/bookmarks/', include('bookmarks.urls')),
+
     # Events (events 라우팅)
     path('api/events/', include('events.urls')),
 ]

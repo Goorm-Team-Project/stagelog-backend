@@ -26,7 +26,7 @@ KAKAO_ACCESS_TOKEN_CLIENT_SECRET 동일 앱에 설정된 클라이언트 시크�
 이후 발급된 인가코드를 아래 YOUR_AUTH_CODE 에 붙여넣기 한 후 요청
 
 **요청 (POST)**
-curl -X POST http://localhost:8000/api/users/login/kakao/ \
+curl -X POST http://localhost:8000/api/users/login/kakao \
 -H "Content-Type: application/json" \
 -d '{
     "code": "YOUR_AUTH_CODE"
