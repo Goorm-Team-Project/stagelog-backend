@@ -3,6 +3,7 @@ import os, datetime, jwt
 from .models import User
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_safe
 from django.contrib.auth import get_user_model
 from apps.common.utils import (
     create_access_token, 
@@ -244,6 +245,7 @@ def get_user_info(request):
                 "level": user.level,
                 "reliability_score": user.reliability_score,
                 "bookmarks": bookmarked_id
+                #뱃지는 테이블 생성 후에
             },
             status=200
         )
@@ -251,3 +253,32 @@ def get_user_info(request):
         return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
     except Exception as e:
         return common_response(success=False, message="정보 조회 중 서버 오류 발생", status=500)
+
+
+@require_safe
+@login_check
+def get_other_user_info(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+
+        public_data = {
+            "id": user.id,
+            "nickname": user.nickname,
+            "level": user.level,
+            #"reliability_score": user.reliability_score,
+            "exp": user.exp,
+            # 뱃지는 테이블 생성 후에
+        }
+        
+        return common_response(
+            success=True,
+            message="정보 조회 성공",
+            data=public_data,
+            status=200
+        )
+
+    except User.DoesNotExist:
+        return common_response(False, message="존재하지 않는 유저입니다.", status=404)
+    except Exception as e:
+        return common_response(False, message="서버 에러", status=500)
+        
