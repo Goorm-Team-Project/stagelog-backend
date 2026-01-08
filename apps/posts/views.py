@@ -4,9 +4,60 @@ from django.db.models import Q, F
 from django.views.decorators.http import require_GET
 
 from common.utils import common_response
-from .models import Post
+from .models import Post, Comment
 
 # Create your views here.
+def _comment_item(c: Comment) -> dict:
+    return {
+        "comment_id": c.comment_id,
+        "user_id": c.user_id,
+        "nickname": getattr(c.user, "nickname", None),
+        "content": c.content,
+        "created_at": c.created_at.isoformat(),
+    }
+
+@require_GET
+def post_comments_list(request, post_id: int):
+    try:
+        page = int(request.GET.get("page") or 1)
+    except ValueError:
+        return common_response(False, message="page는 정수여야 합니다.", status=400)
+    
+    if page <= 0:
+        return common_response(False, message="page는 1 이상이어야 합니다.", status=400)
+    
+    if not Post.objects.filter(post_id=post_id).exists():
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+    
+    PAGE_SIZE = 10
+
+    qs = (
+        Comment.objects
+        .filter(post_id=post_id)
+        .select_related("user")
+        .order_by("-created_at", "-comment_id")
+    )
+
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(page)
+
+    data = {
+        "post_id": post_id,
+        "comments": [_comment_item(c) for c in page_object_list],
+
+        # API명세 키: totalCount
+        "totalCount": paginator.count,
+
+        # (Option Meta) 무한스크롤/페이지네이션 UI 활용
+        "page": page_obj.number,
+        "totalPages": paginator.num_pages,
+        "pageSize": PAGE_SIZE,
+    }
+
+    return common_response(True, data=data, message="댓글 목록 조회 성공", status=200)
+
+
+
 def _post_summary(p: Post) -> dict:
     return {
         "post_id": p.post_id,
