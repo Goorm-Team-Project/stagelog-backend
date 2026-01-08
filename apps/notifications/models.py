@@ -30,13 +30,13 @@ class Notification(models.Model):
     )
 
     class Type(models.TextChoices):
-        POST = 'post', 'Post'
+        COMMENT = 'comment', 'Comment'
         EVENT = 'event', 'Event'
 
     type = models.CharField(
         max_length=20,
         choices = Type.choices,
-        default = Type.POST
+        default = Type.COMMENT
     )
 
     is_read = models.BooleanField(default=False)
