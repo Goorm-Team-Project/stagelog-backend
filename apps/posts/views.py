@@ -78,4 +78,4 @@ def post_detail(request, post_id: int):
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
     
     p = Post.objects.select_related("user").get(post_id=post_id)
-    return common_response(True, data=post_detail(p), message="게시글 상세 조회 성공", status=200)
+    return common_response(True, data=_post_detail(p), message="게시글 상세 조회 성공", status=200)
