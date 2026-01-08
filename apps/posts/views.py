@@ -1,62 +1,23 @@
+import json
+
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Q, F
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction, IntegrityError
 
-from common.utils import common_response
-from .models import Post, Comment
+from common.utils import common_response, login_check
+from events.models import Event
+from .models import Post, Comment, PostReaction, Report, ReactionType
 
 # Create your views here.
-def _comment_item(c: Comment) -> dict:
-    return {
-        "comment_id": c.comment_id,
-        "user_id": c.user_id,
-        "nickname": getattr(c.user, "nickname", None),
-        "content": c.content,
-        "created_at": c.created_at.isoformat(),
-    }
 
-@require_GET
-def post_comments_list(request, post_id: int):
+def _parse_json(request):
     try:
-        page = int(request.GET.get("page") or 1)
-    except ValueError:
-        return common_response(False, message="page는 정수여야 합니다.", status=400)
-    
-    if page <= 0:
-        return common_response(False, message="page는 1 이상이어야 합니다.", status=400)
-    
-    if not Post.objects.filter(post_id=post_id).exists():
-        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
-    
-    PAGE_SIZE = 10
-
-    qs = (
-        Comment.objects
-        .filter(post_id=post_id)
-        .select_related("user")
-        .order_by("-created_at", "-comment_id")
-    )
-
-    paginator = Paginator(qs, PAGE_SIZE)
-    page_obj = paginator.get_page(page)
-
-    data = {
-        "post_id": post_id,
-        "comments": [_comment_item(c) for c in page_object_list],
-
-        # API명세 키: totalCount
-        "totalCount": paginator.count,
-
-        # (Option Meta) 무한스크롤/페이지네이션 UI 활용
-        "page": page_obj.number,
-        "totalPages": paginator.num_pages,
-        "pageSize": PAGE_SIZE,
-    }
-
-    return common_response(True, data=data, message="댓글 목록 조회 성공", status=200)
-
-
+        return json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return None
 
 def _post_summary(p: Post) -> dict:
     return {
@@ -66,8 +27,8 @@ def _post_summary(p: Post) -> dict:
         "nickname": getattr(p.user, "nickname", None),
         "category": p.category,
         "title": p.title,
-        "created_at": p.created_at.isoformat(),
-        "updated_at": p.updated_at.isoformat(),
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
         "views": p.views,
         "like": p.like_count,
         "dislike": p.dislike_count,
@@ -79,8 +40,26 @@ def _post_detail(p: Post) -> dict:
         "content": p.content,
     }
 
-@require_GET
+
+def _comment_item(c: Comment) -> dict:
+    return {
+        "comment_id": c.comment_id,
+        "post_id": c.post_id,
+        "user_id": c.user_id,
+        "nickname": getattr(c.user, "nickname", None),
+        "content": c.content,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+    }
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def event_posts_list(request, event_id: int):
+
+    if request.method == "POST":
+        return event_posts_create(request, event_id)
+
     category = (request.GET.get("category") or "").strip()
     search = (request.GET.get("search") or "").strip()
     sort  = (request.GET.get("sort") or "latest").strip().lower()
@@ -103,7 +82,7 @@ def event_posts_list(request, event_id: int):
     if sort in ("popular", "like", "likes"):
         qs = qs.order_by("-like_count", "-created_at", "-post_id")
     elif sort in ("views", "view"):
-        qs = qs.order_by("-views", "-created-at)", "-post_id")
+        qs = qs.order_by("-views", "-created_at", "-post_id")
     else:
         qs = qs.order_by("-created_at", "-post_id")
     
@@ -120,9 +99,47 @@ def event_posts_list(request, event_id: int):
     }
     return common_response(True, data=data, message="공연별 게시글 목록 조회 성공", status=200)
 
+@csrf_exempt
+@login_check
+@require_POST
+def event_posts_create(request, event_id: int):
+    # 공연 존재 확인
+    if not Event.objects.filter(event_id=event_id).exists():
+        return common_response(False,message="존재하지 않는 공연입니다.", status=404)
 
-@require_GET
+    data= _parse_json(request)
+    if data is None:
+        return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
+    
+    category = (data.get("category") or "").strip()
+    title = (data.get("title") or "").strip()
+    content = (data.get("content") or "").strip()
+    image_url = (data.get("image_url") or "").strip() or None
+
+    if not category or not title or not content:
+        return common_response(False, message="카테고리/제목/내용는 필수입니다.", status=400)
+
+    p = Post.objects.create(
+        event_id=event_id,
+        user_id=request.user_id,
+        category=category,
+        title=title,
+        content=content,
+        image_url=image_url,
+    )
+
+    p = Post.objects.select_related("user").get(post_id=p.post_id)
+    return common_response(True, data=_post_detail(p), message="게시글 작성 성공", status=201)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "PATCH", "DELETE"])
 def post_detail(request, post_id: int):
+    if request.method == "PATCH":
+        return post_update(request, post_id)
+    if request.method == "DELETE":
+        return post_delete(request, post_id)
+
     # 조회수 +1 (동시성 안전)
     updated = Post.objects.filter(post_id=post_id).update(views=F("views") + 1)
     if updated == 0:
@@ -130,3 +147,246 @@ def post_detail(request, post_id: int):
     
     p = Post.objects.select_related("user").get(post_id=post_id)
     return common_response(True, data=_post_detail(p), message="게시글 상세 조회 성공", status=200)
+
+
+@csrf_exempt
+@login_check
+@require_http_methods(["PATCH"])
+def post_update(request, post_id: int):
+    data = _parse_json(request)
+    if data is None:
+        return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
+
+    try:
+        p = Post.objects.get(post_id=post_id)
+    except Post.DoesNotExist:
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+
+    if p.user_id != request.user_id:
+        return common_response(False, message="수정 권한이 없습니다.", status=403)
+
+    # 부분 수정(PATCH)
+    changed = False
+    for field in ("category", "title", "content", "image_url"):
+        if field in data:
+            value = data.get(field)
+            if isinstance(value, str):
+                value = value.strip()
+            setattr(p, field, value)
+            changed = True
+
+    if not changed:
+        return common_response(False, message="수정할 필드가 없습니다.", status=400)
+
+    p.save()
+    p = Post.objects.select_related("user").get(post_id=post_id)
+    return common_response(True, data=_post_detail(p), message="게시글 수정 성공", status=200)
+
+
+@csrf_exempt
+@login_check
+@require_http_methods(["DELETE"])
+def post_delete(request, post_id: int):
+    try:
+        p = Post.objects.get(post_id=post_id)
+    except Post.DoesNotExist:
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+
+    if p.user_id != request.user_id:
+        return common_response(False, message="삭제 권한이 없습니다.", status=403)
+
+    p.delete()
+    return common_response(True, data={"post_id": post_id}, message="게시글 삭제 성공", status=200)
+
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def post_comments_list(request, post_id: int):
+    if request.method == "POST":
+        return comment_create(request, post_id)
+
+    # GET: 목록 + 페이지네이션
+    try:
+        page = int(request.GET.get("page") or 1)
+        size = int(request.GET.get("size") or 10)
+    except ValueError:
+        return common_response(False, message="page/size는 정수여야 합니다.", status=400)
+
+    qs = Comment.objects.filter(post_id=post_id).select_related("user").order_by("-created_at", "-comment_id")
+    paginator = Paginator(qs, size)
+    page_obj = paginator.get_page(page)
+
+    data = {
+        "post_id": post_id,
+        "comments": [_comment_item(c) for c in page_obj.object_list],
+        "total_count": paginator.count,
+        "total_pages": paginator.num_pages,
+        "page": page_obj.number,
+        "size": size,
+    }
+    return common_response(True, data=data, message="댓글 목록 조회 성공", status=200)
+
+
+@csrf_exempt
+@login_check
+@require_POST
+def comment_create(request, post_id: int):
+    if not Post.objects.filter(post_id=post_id).exists():
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+
+    data = _parse_json(request)
+    if data is None:
+        return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
+
+    content = (data.get("content") or "").strip()
+    if not content:
+        return common_response(False, message="content는 필수입니다.", status=400)
+
+    c = Comment.objects.create(
+        post_id=post_id,
+        user_id=request.user_id,
+        content=content,
+    )
+    c = Comment.objects.select_related("user").get(comment_id=c.comment_id)
+    return common_response(True, data=_comment_item(c), message="댓글 작성 성공", status=201)
+
+
+
+@csrf_exempt
+@login_check
+@require_http_methods(["PATCH", "DELETE"])
+def comment_detail(request, comment_id: int):
+    try:
+        c = Comment.objects.get(comment_id=comment_id)
+    except Comment.DoesNotExist:
+        return common_response(False, message="존재하지 않는 댓글입니다.", status=404)
+
+    if c.user_id != request.user_id:
+        return common_response(False, message="권한이 없습니다.", status=403)
+
+    if request.method == "DELETE":
+        c.delete()
+        return common_response(True, data={"comment_id": comment_id}, message="댓글 삭제 성공", status=200)
+
+    # PATCH
+    data = _parse_json(request)
+    if data is None:
+        return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
+
+    content = (data.get("content") or "").strip()
+    if not content:
+        return common_response(False, message="content는 필수입니다.", status=400)
+
+    c.content = content
+    c.save()
+    c = Comment.objects.select_related("user").get(comment_id=comment_id)
+    return common_response(True, data=_comment_item(c), message="댓글 수정 성공", status=200)
+
+
+
+@csrf_exempt
+@login_check
+@require_POST
+def post_like(request, post_id: int):
+    return _toggle_reaction(request, post_id, ReactionType.LIKE)
+
+
+@csrf_exempt
+@login_check
+@require_POST
+def post_dislike(request, post_id: int):
+    return _toggle_reaction(request, post_id, ReactionType.DISLIKE)
+
+
+def _toggle_reaction(request, post_id: int, target_type: str):
+    try:
+        with transaction.atomic():
+            # 게시글 row lock (카운트 정합성)
+            p = Post.objects.select_for_update().get(post_id=post_id)
+
+            r = PostReaction.objects.select_for_update().filter(
+                post_id=post_id, user_id=request.user_id
+            ).first()
+
+            if r is None:
+                # 신규
+                PostReaction.objects.create(post_id=post_id, user_id=request.user_id, type=target_type)
+                if target_type == ReactionType.LIKE:
+                    Post.objects.filter(post_id=post_id).update(like_count=F("like_count") + 1)
+                else:
+                    Post.objects.filter(post_id=post_id).update(dislike_count=F("dislike_count") + 1)
+                new_state = target_type
+
+            else:
+                # 토글/스위치
+                if r.type == target_type:
+                    # 같은 반응이면 취소
+                    r.delete()
+                    if target_type == ReactionType.LIKE:
+                        Post.objects.filter(post_id=post_id).update(like_count=F("like_count") - 1)
+                    else:
+                        Post.objects.filter(post_id=post_id).update(dislike_count=F("dislike_count") - 1)
+                    new_state = None
+                else:
+                    # dislike -> like 또는 like -> dislike
+                    old = r.type
+                    r.type = target_type
+                    r.save(update_fields=["type"])
+                    if old == ReactionType.LIKE:
+                        Post.objects.filter(post_id=post_id).update(
+                            like_count=F("like_count") - 1,
+                            dislike_count=F("dislike_count") + 1,
+                        )
+                    else:
+                        Post.objects.filter(post_id=post_id).update(
+                            dislike_count=F("dislike_count") - 1,
+                            like_count=F("like_count") + 1,
+                        )
+                    new_state = target_type
+
+        # 트랜잭션 밖에서 최신 카운트 조회
+        p2 = Post.objects.get(post_id=post_id)
+        data = {
+            "post_id": post_id,
+            "reaction": new_state,
+            "like": p2.like_count,
+            "dislike": p2.dislike_count,
+        }
+        return common_response(True, data=data, message="리액션 처리 성공", status=200)
+
+    except Post.DoesNotExist:
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+    except IntegrityError:
+        # 유니크 충돌 등 예외 케이스
+        return common_response(False, message="리액션 처리 중 충돌이 발생했습니다.", status=409)
+
+
+
+@csrf_exempt
+@login_check
+@require_POST
+def post_report(request, post_id: int):
+    if not Post.objects.filter(post_id=post_id).exists():
+        return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
+
+    data = _parse_json(request)
+    if data is None:
+        return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
+
+    reason_category = (data.get("reason_category") or "").strip()
+    reason_detail = (data.get("reason_detail") or "").strip() or None
+
+    if not reason_category:
+        return common_response(False, message="reason_category는 필수입니다.", status=400)
+
+    try:
+        Report.objects.create(
+            post_id=post_id,
+            user_id=request.user_id,
+            reason_category=reason_category,
+            reason_detail=reason_detail,
+        )
+        return common_response(True, data={"post_id": post_id}, message="신고 접수 성공", status=201)
+    except IntegrityError:
+        return common_response(False, message="이미 신고한 게시글입니다.", status=409)

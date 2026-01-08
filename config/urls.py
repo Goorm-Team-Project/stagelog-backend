@@ -29,4 +29,6 @@ urlpatterns = [
 
     # Posts (posts 라우팅)
     path('api/posts/', include('posts.urls')),
+
+    path("api/comments/", include("posts.comment_urls")),
 ]
