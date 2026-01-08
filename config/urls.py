@@ -34,5 +34,5 @@ urlpatterns = [
     path('api/posts/', include('posts.urls')),
 
     # 알림 라우팅
-    path('api/notification', include('notifications.urls')),
+    path('api/notifications', include('notifications.urls')),
 ]
