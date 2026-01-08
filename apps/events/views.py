@@ -1,5 +1,5 @@
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.views.decorators.http import require_GET
 
 from common.utils import common_response
@@ -67,7 +67,13 @@ def event_list(request):
         )
 
     #--정렬 매핑 (팀 노션 명세의 sort 값이 확정되면 이 부분 수정)--
-    if sort in ("latest", "recent"):
+    if sort in ("favorite", "fav", "bookmark", "popular", "popularity"):
+        qs = qs.annotate(
+            favorite_count=Count("bookmarks")
+        ).order_by(
+            "-favorite_count", "-update_date", "-event_id"
+        )
+    elif sort in ("latest", "recent"):
         qs = qs.order_by("-start_date", "-event_id")
     elif sort in ("update",):
         qs = qs.order_by("-update_date", "-event_id")
