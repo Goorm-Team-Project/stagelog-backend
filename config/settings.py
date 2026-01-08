@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'events',
     'posts',
     'bookmarks',
+    'notifications',
 ]
 
 MIDDLEWARE = [
