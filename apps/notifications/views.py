@@ -47,3 +47,22 @@ def get_notification_list(request):
     except Exception as e:
         print(f"에러 로그: {e}") # 디버깅용 로그 찍어주면 좋습니다
         return common_response(success=False, message="서버 에러", status=500)
+
+@login_check
+def get_unread_notification(request):
+    try:
+        user_id = request.user_id
+
+        unread_count = Notification.objects.filter(
+            user_id=user_id,
+            is_read=False
+        ).count()
+
+        return common_response(success=True, message="체크 완료", data={
+                "has_unread": unread_count > 0,
+                "unread_count": unread_count
+            },
+            status=200
+        )
+    except Exception as e:
+        return common_response(success=False, message="서버 에러", status=500)
