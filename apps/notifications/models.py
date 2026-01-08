@@ -32,6 +32,7 @@ class Notification(models.Model):
     class Type(models.TextChoices):
         COMMENT = 'comment', 'Comment'
         EVENT = 'event', 'Event'
+        LIKE = 'like', 'Like'
 
     type = models.CharField(
         max_length=20,
