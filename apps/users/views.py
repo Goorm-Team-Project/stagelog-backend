@@ -253,6 +253,8 @@ def get_user_info(request):
     except User.DoesNotExist:
         return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
     except Exception as e:
+        print(f"에러 발생 : {e}")
+        traceback.print_exc()
         return common_response(success=False, message="정보 조회 중 서버 오류 발생", status=500)
 
 

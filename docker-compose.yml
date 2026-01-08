@@ -31,7 +31,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${API_PORT:-18000}:8000"
+      - "${API_PORT:-18000}:8000"
     volumes:
       - .:/app
     command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
