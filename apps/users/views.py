@@ -377,3 +377,5 @@ def refresh_token_check(request):
         return common_response(success=False, message="리프레시 토큰이 만료됐습니다. 다시 로그인하세요", status=401)
     except (jwt.DecodeError, User.DoesNotExist):
         return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
+    except Exception as e:
+        return common_response(success=False, message="서버 에러", status=500)
