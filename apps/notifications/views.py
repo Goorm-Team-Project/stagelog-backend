@@ -3,18 +3,20 @@ from django.http import JsonResponse
 from .models import Notification
 from common.utils import common_response, login_check
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_safe, require_http_methods 
 
 def _notification_summary(n: Notification) -> dict:
     return {
         "notification_id": n.notification_id,
         "type": n.type,
-        "maessage": n.message,
+        "message": n.message,
         "is_read": n.is_read,
         "created_at": n.created_at.isoformat(),
         "post_id": n.post_id if n.post_id else None,
         "event_id": n.event_id if n.event_id else None
     }
 
+@require_safe
 @csrf_exempt
 @login_check
 def get_notification_list(request):
@@ -44,12 +46,12 @@ def get_notification_list(request):
         }
 
         return common_response(success=True, data=data, message="알림 조회 성공", status=200)
-        # ---------------------------------------------------------
 
     except Exception as e:
-        print(f"에러 로그: {e}") # 디버깅용 로그 찍어주면 좋습니다
+        print(f"에러 로그: {e}") 
         return common_response(success=False, message="서버 에러", status=500)
 
+@require_safe
 @csrf_exempt
 @login_check
 def get_unread_notification(request):
@@ -70,17 +72,23 @@ def get_unread_notification(request):
     except Exception as e:
         return common_response(success=False, message="서버 에러", status=500)
 
-
+@require_http_methods(["PATCH"])
 @csrf_exempt
 @login_check
 def read_notification(request, notification_id):
     try:
-        notification = Notification.objects.get(notification_id=notification_id, user_id=request.user.id)
-    except:
+        notification = Notification.objects.get(
+            notification_id=notification_id, 
+            user_id=request.user_id 
+        )
+        
+        if not notification.is_read:
+            notification.is_read = True
+            notification.save()
+
+        return common_response(success=True, message="읽음 처리 완료", status=200)
+
+    except Notification.DoesNotExist:
         return common_response(success=False, message="존재하지 않는 알림입니다.", status=404)
-
-    if not notification.is_read:
-        notification.is_read = True
-        notification.save()
-
-    return common_response(success=True, message="읽음 처리 완료", status=200)
+    except Exception as e:
+        return common_response(success=False, message="서버 에러", status=500)
