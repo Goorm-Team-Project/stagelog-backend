@@ -102,11 +102,15 @@ def kakao_login(request):
         """
         if user:
             jwt_access_token = create_access_token(user.user_id)
+            refresh_token = create_refresh_token(user.user_id)
+
+            RefreshToken.objects.create(user=user, token=refresh_token)
             return common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
                 data={
-                    "access_token": jwt_access_token
+                    "access_token": jwt_access_token,
+                    "refresh_token": refresh_token
                 },
                 status=200)
         
@@ -343,3 +347,55 @@ def update_user_profile(request):
         return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
     except Exception as e:
         return common_response(success=False, message="서버 에러", status=500)
+
+def refresh_token_check(request):
+    try:
+        data = json.loads(request.body)
+        client_refresh_token = data.get('refresh_token')
+
+        if not client_refresh_token:
+            return common_response(success=False, message="토큰이 없습니다.", status=400)
+
+        # 1차 검증
+        payload = jwt.decode(client_refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
+        user_id = payload.get('user_id')
+
+        # 2차 검증
+        if not RefreshToken.objects.filter(user_id=user_id, token=client_refresh_token).exists():
+            return common_response(success=False, message="만료된 토큰입니다. 다시 로그인 하세요", status=401)
+
+        # 검증 통과
+        user = User.objects.get(id=user_id)
+
+        new_access_token = create_access_token(user.user_id)
+
+        return common_response(
+            success=True,
+            message="토큰 재발급 완료",
+            data={"access_token": new_access_token},
+            status=200
+        )
+    except jwt.ExpiredSignatureError:
+        return common_response(success=False, message="리프레시 토큰이 만료됐습니다. 다시 로그인하세요", status=401)
+    except (jwt.DecodeError, User.DoesNotExist):
+        return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
+    except Exception as e:
+        return common_response(success=False, message="서버 에러", status=500)
+
+def logout(request):
+    try:
+        data = json.loads(request.body)
+        delete_target_token = data.get('refresh_token')
+
+        if not delete_target_token:
+            return common_response(success=False, message="삭제할 토큰이 없습니다.", status=400)
+
+        RefreshToken.objects.filter(
+            user=request.user,
+            token=delete_target_token
+        ).delete()
+
+        return common_response(success=True, message="로그아웃 성공", status=200)
+
+    except Exception as e:
+        return common_response(success=True, message="로그아웃 처리됨")
