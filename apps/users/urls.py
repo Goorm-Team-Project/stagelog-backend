@@ -7,7 +7,8 @@ from .views import (kakao_login,
         get_user_info, 
         get_other_user_info, 
         update_user_profile,
-        refresh_token_check
+        refresh_token_check,
+        logout
         )
 
 urlpatterns = [
@@ -25,6 +26,8 @@ urlpatterns = [
     path('me/profile', update_user_profile, name='update_user_profile'),
     #액세스 토큰 재요청
     path('login/refresh', refresh_token_check, name='refresh_token_check')
+    #로그아웃
+    path('logout', logout, name='logout')
 
     #테스트용
     path('kakao/test', kakao_test_page),      # 1. 여기로 접속하면 로그인 시작

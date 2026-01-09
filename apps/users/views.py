@@ -379,3 +379,21 @@ def refresh_token_check(request):
         return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
     except Exception as e:
         return common_response(success=False, message="서버 에러", status=500)
+
+def logout(request):
+    try:
+        data = json.loads(request.body)
+        delete_target_token = data.get('refresh_token')
+
+        if not delete_target_token:
+            return common_response(success=False, message="삭제할 토큰이 없습니다.", status=400)
+
+        RefreshToken.objects.filter(
+            user=request.user,
+            token=delete_target_token
+        ).delete()
+
+        return common_response(success=True, message="로그아웃 성공", status=200)
+
+    except Exception as e:
+        return common_response(success=True, message="로그아웃 처리됨")
