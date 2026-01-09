@@ -66,3 +66,17 @@ def get_unread_notification(request):
         )
     except Exception as e:
         return common_response(success=False, message="서버 에러", status=500)
+
+
+@login_check
+def read_notification(request, notification_id):
+    try:
+        notification = Notification.objects.get(notification_id=notification_id, user_id=request.user.id)
+    except:
+        return common_response(success=False, message="존재하지 않는 알림입니다.", status=404)
+
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save()
+
+    return common_response(succes=True, message="읽음 처리 완료", status=200)
