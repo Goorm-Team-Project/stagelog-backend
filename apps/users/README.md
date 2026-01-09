@@ -1,42 +1,304 @@
-# User apps
-로그인/마이페이지 관련 Apps
+# Users App
 
-### 참고 페이지
-https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api#before-you-begin-process
+Django 기반 사용자 인증 및 프로필 관리 앱
 
+## 개요
 
-### .env 에 반드시 포함되어야 하는 목록
-KAKAO_REST_API_KEY 카카오 개발자 페이지에서 등록된 앱의 REST API KEY
-KAKAO_REDIRECT_URI 카카오 개발자 페이지에서 등록된 앱에 등록한 리다이렉트 URI
-KAKAO_ACCESS_TOKEN_CLIENT_SECRET 동일 앱에 설정된 클라이언트 시크릿
+카카오 OAuth 로그인, JWT 기반 인증, 사용자 프로필 관리 기능을 제공하는 Django 앱입니다.
 
+## 주요 기능
 
-## 🧪 API 테스트 가이드 (Curl)
+- 카카오 OAuth 2.0 소셜 로그인
+- JWT 기반 Access Token / Refresh Token 인증
+- 사용자 회원가입 및 프로필 관리
+- 레벨, 경험치, 신뢰도 점수 시스템
+- 북마크 기능 연동
+- 알림 구독 설정 (이메일, 이벤트, 게시글)
 
-프론트엔드 없이 터미널에서 **카카오 로그인 -> 토큰 발급 -> 내 정보(북마크 포함) 조회**를 테스트하는 방법입니다.
+## 모델 구조
 
-### 1. 카카오 로그인 (인가 코드로 토큰 발급)
-세팅된 docker compose로 api 서버와 db 서버를 docker compose up
-컨테이너 api 서버로 접속 가능하게 세팅
+### User 모델
+```python
+- user_id: 기본키 (AutoField)
+- email: 이메일 (고유값)
+- nickname: 닉네임
+- provider: OAuth 제공자 (kakao, google, naver 등)
+- provider_id: OAuth 제공자의 사용자 ID
+- created_at: 가입일시
+- is_email_sub: 이메일 구독 여부
+- is_events_notification_sub: 이벤트 알림 구독 여부
+- is_posts_notification_sub: 게시글 알림 구독 여부
+- is_admin: 관리자 권한
+- exp: 경험치
+- level: 레벨
+- reliability_score: 신뢰도 점수 (기본값: 50)
+- is_active: 활성 상태
+```
 
-### STEP 1
-브라우저에서 컨테이너주소/api/auth/kakao/test 로 접속.
-카카오 로그인 페이지에서 이메일/비밀번호 입력
+### RefreshToken 모델
+```python
+- user: User 외래키
+- token: Refresh Token 문자열
+- created_at: 생성일시
+```
 
-이후 발급된 인가코드를 아래 YOUR_AUTH_CODE 에 붙여넣기 한 후 요청
+## 환경 변수 설정
 
-**요청 (POST)**
+`.env` 파일에 다음 항목을 추가해야 합니다:
+
+```env
+KAKAO_REST_API_KEY=your_kakao_rest_api_key
+KAKAO_REDIRECT_URI=your_redirect_uri
+KAKAO_ACCESS_TOKEN_CLIENT_SECRET=your_client_secret
+SECRET_KEY=your_django_secret_key
+```
+
+## API 엔드포인트
+
+### 인증
+
+#### 카카오 로그인
+```
+POST /api/users/login/kakao
+Content-Type: application/json
+
+{
+  "code": "kakao_authorization_code"
+}
+```
+
+**응답 (기존 회원)**
+```json
+{
+  "success": true,
+  "message": "{nickname} 님! 환영합니다!",
+  "data": {
+    "access_token": "jwt_access_token",
+    "refresh_token": "jwt_refresh_token"
+  }
+}
+```
+
+**응답 (신규 회원 - 회원가입 필요)**
+```json
+{
+  "success": true,
+  "message": "회원가입이 필요합니다.",
+  "data": {
+    "register_token": "jwt_register_token"
+  }
+}
+```
+
+#### 회원가입
+```
+POST /api/users/signup
+Content-Type: application/json
+
+{
+  "register_token": "jwt_register_token",
+  "nickname": "사용자닉네임",
+  "email": "user@example.com",
+  "is_email_sub": false,
+  "is_events_notification_sub": false,
+  "is_posts_notification_sub": false
+}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "가입 완료",
+  "data": {
+    "access_token": "jwt_access_token"
+  }
+}
+```
+
+#### Access Token 재발급
+```
+POST /api/users/login/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "jwt_refresh_token"
+}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "토큰 재발급 완료",
+  "data": {
+    "access_token": "new_jwt_access_token"
+  }
+}
+```
+
+#### 로그아웃
+```
+POST /api/users/logout
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "refresh_token": "jwt_refresh_token"
+}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "로그아웃 성공"
+}
+```
+
+### 사용자 정보
+
+#### 내 정보 조회
+```
+GET /api/users/me
+Authorization: Bearer {access_token}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "정보 조회 성공",
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "nickname": "사용자닉네임",
+    "provider": "kakao",
+    "provider_id": "123456789",
+    "created_at": "2026-01-09T12:00:00Z",
+    "is_email_sub": false,
+    "is_events_notification_sub": false,
+    "is_posts_notification_sub": false,
+    "is_admin": false,
+    "exp": 100,
+    "level": 2,
+    "reliability_score": 55,
+    "bookmarks": [1, 2, 3]
+  }
+}
+```
+
+#### 다른 사용자 정보 조회
+```
+GET /api/users/{user_id}
+Authorization: Bearer {access_token}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "정보 조회 성공",
+  "data": {
+    "id": 2,
+    "nickname": "다른사용자",
+    "level": 5,
+    "exp": 500
+  }
+}
+```
+
+#### 내 프로필 수정
+```
+PATCH /api/users/me/profile
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "nickname": "새로운닉네임",
+  "is_email_sub": true,
+  "is_events_notification_sub": true,
+  "is_posts_notification_sub": false
+}
+```
+
+**응답**
+```json
+{
+  "success": true,
+  "message": "정보 수정 성공",
+  "data": {
+    "id": 1,
+    "nickname": "새로운닉네임",
+    "bookmarks": [1, 2, 3]
+  }
+}
+```
+
+## 테스트 가이드 (curl)
+
+### 1. 개발 환경 실행
+```bash
+docker compose up
+```
+
+### 2. 카카오 인가 코드 발급
+브라우저에서 다음 URL로 접속:
+```
+http://localhost:8000/api/users/kakao/test
+```
+
+카카오 로그인 후 표시되는 인가 코드를 복사합니다.
+
+### 3. 로그인 (토큰 발급)
+```bash
 curl -X POST http://localhost:8000/api/users/login/kakao \
 -H "Content-Type: application/json" \
 -d '{
     "code": "YOUR_AUTH_CODE"
 }'
+```
 
-백엔드 내부에서 카카오 서버에 해당 유저에 대한 고유 id 등 프로필에 대한 데이터 요청.
-
-응답으로 발급된 토큰을 아래 <발급받은_ACCESS_TOKEN> 에 붙여넣기 하면 내 정보 조회
-
-
+### 4. 내 정보 조회
+```bash
 curl -X GET http://localhost:8000/api/users/me \
 -H "Content-Type: application/json" \
--H "Authorization: Bearer <발급받은_ACCESS_TOKEN>"
+-H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## 인증 방식
+
+- **Access Token**: API 요청 시 `Authorization: Bearer {token}` 헤더로 전송
+- **Refresh Token**: Access Token 만료 시 재발급 요청에 사용
+- **Register Token**: 신규 회원가입 시 임시 인증 토큰
+
+## 주요 유틸리티 함수
+
+- `create_access_token(user_id)`: Access Token 생성
+- `create_refresh_token(user_id)`: Refresh Token 생성
+- `create_register_token(provider, provider_id, email)`: Register Token 생성
+- `login_check`: 데코레이터 - JWT 인증 검증
+- `common_response(success, message, data, status)`: 통일된 API 응답 형식
+
+## 보안 고려사항
+
+- CSRF 보호: OAuth 콜백 및 API 엔드포인트에 `@csrf_exempt` 적용
+- JWT 토큰: SECRET_KEY 기반 서명
+- Refresh Token: 데이터베이스에 저장하여 관리
+- 비밀번호: OAuth 전용이므로 `set_unusable_password()` 사용
+
+## 에러 응답 예시
+
+```json
+{
+  "success": false,
+  "message": "에러 메시지",
+  "status": 400
+}
+```
+
+## 참고 자료
+
+- [카카오 로그인 REST API 문서](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api)
+- Django Authentication System
+- JWT (JSON Web Token)
