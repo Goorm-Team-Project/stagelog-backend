@@ -282,7 +282,22 @@ curl -X GET http://localhost:8000/api/users/me \
 
 ## 보안 고려사항
 
-- CSRF 보호: OAuth 콜백 및 API 엔드포인트에 `@csrf_exempt` 적용
+### CSRF 보호
+Django는 기본적으로 POST, PUT, PATCH, DELETE 요청에 CSRF 토큰 검증을 수행합니다. 하지만 REST API에서는 다음 이유로 `@csrf_exempt`를 사용합니다:
+
+- **JWT 기반 인증**: 쿠키 대신 Authorization 헤더로 JWT를 전송하므로 CSRF 공격 위험이 낮음
+- **외부 클라이언트**: 모바일 앱, 프론트엔드 SPA 등 다양한 클라이언트가 접근
+- **OAuth 콜백**: 카카오 서버에서 리다이렉트되는 요청은 CSRF 토큰을 포함할 수 없음
+
+**적용 위치**: POST/PATCH 요청을 받는 모든 API 엔드포인트
+```python
+@csrf_exempt
+@require_POST
+def kakao_login(request):
+    ...
+```
+
+### 기타 보안
 - JWT 토큰: SECRET_KEY 기반 서명
 - Refresh Token: 데이터베이스에 저장하여 관리
 - 비밀번호: OAuth 전용이므로 `set_unusable_password()` 사용
