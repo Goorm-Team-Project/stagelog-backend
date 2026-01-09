@@ -2,6 +2,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from .models import Notification
 from common.utils import common_response, login_check
+from django.views.decorators.csrf import csrf_exempt
 
 def _notification_summary(n: Notification) -> dict:
     return {
@@ -14,6 +15,7 @@ def _notification_summary(n: Notification) -> dict:
         "event_id": n.event_id if n.event_id else None
     }
 
+@csrf_exempt
 @login_check
 def get_notification_list(request):
     try:
@@ -48,6 +50,7 @@ def get_notification_list(request):
         print(f"에러 로그: {e}") # 디버깅용 로그 찍어주면 좋습니다
         return common_response(success=False, message="서버 에러", status=500)
 
+@csrf_exempt
 @login_check
 def get_unread_notification(request):
     try:
@@ -68,6 +71,7 @@ def get_unread_notification(request):
         return common_response(success=False, message="서버 에러", status=500)
 
 
+@csrf_exempt
 @login_check
 def read_notification(request, notification_id):
     try:
@@ -79,4 +83,4 @@ def read_notification(request, notification_id):
         notification.is_read = True
         notification.save()
 
-    return common_response(succes=True, message="읽음 처리 완료", status=200)
+    return common_response(success=True, message="읽음 처리 완료", status=200)

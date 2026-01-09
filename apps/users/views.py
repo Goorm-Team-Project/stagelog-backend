@@ -1,6 +1,6 @@
 import traceback, json, sys, requests
 import os, datetime, jwt
-from .models import User
+from .models import User, RefreshToken
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_safe
@@ -71,7 +71,7 @@ def kakao_login(request):
         token_res = requests.post(access_token_req_url, data=access_token_req_data)
 
         if token_res.status_code != 200:
-            print(f"Kakao token error: {toekn.res.json()}", flush=True)
+            print(f"Kakao token error: {token.res.json()}", flush=True)
             return common_response(success=False, message="카카오 액세스 토큰 발급 실패", status=400)
         
         """
@@ -130,7 +130,7 @@ def kakao_login(request):
                 status=202
             )
     except Exception as e:
-        traceback.print_exc(file=sys.stdout)
+        traceback.print_exc()
         return common_response(success=False, message="알 수 없는 오류", status=500)
 
 @csrf_exempt
