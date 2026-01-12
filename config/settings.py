@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     'users',
     'events',
     'posts',
+    'bookmarks',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -101,4 +103,4 @@ if not DEBUG:
 # 9. JWT 설정 (수동 구현용 변수)
 # SimpleJWT 설정은 제거하고, 직접 구현 시 사용할 알고리즘/만료시간만 환경변수나 상수로 관리 추천
 JWT_ALGORITHM = 'HS256'
-JWT_EXP_DELTA_SECONDS = 60 * 30  # 30분
+JWT_EXP_DELTA_SECONDS = env.int('JWT_EXP_DELTA_SECONDS', default= 60 * 30)

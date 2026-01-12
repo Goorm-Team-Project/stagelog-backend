@@ -18,7 +18,6 @@ def _parse_json(request):
         return json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         return None
-
 def _post_summary(p: Post) -> dict:
     return {
         "post_id": p.post_id,
@@ -40,7 +39,6 @@ def _post_detail(p: Post) -> dict:
         "content": p.content,
     }
 
-
 def _comment_item(c: Comment) -> dict:
     return {
         "comment_id": c.comment_id,
@@ -59,7 +57,6 @@ def event_posts_list(request, event_id: int):
 
     if request.method == "POST":
         return event_posts_create(request, event_id)
-
     category = (request.GET.get("category") or "").strip()
     search = (request.GET.get("search") or "").strip()
     sort  = (request.GET.get("sort") or "latest").strip().lower()
@@ -139,7 +136,6 @@ def post_detail(request, post_id: int):
         return post_update(request, post_id)
     if request.method == "DELETE":
         return post_delete(request, post_id)
-
     # 조회수 +1 (동시성 안전)
     updated = Post.objects.filter(post_id=post_id).update(views=F("views") + 1)
     if updated == 0:
