@@ -85,13 +85,21 @@ def kakao_login(request):
             jwt_access_token = create_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
 
+            print(f"\n========== [DEBUG] Login Success: {user.nickname} ==========", flush=True)
+            print(f"[DEBUG] Generated Refresh Token: {refresh_token}", flush=True)
+
             RefreshToken.objects.create(user=user, token=refresh_token)
             return common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
                 data={
                     "access_token": jwt_access_token,
-                    "refresh_token": refresh_token
+                    "refresh_token": refresh_token,
+                    "user": {
+                        "id": user.user_id,
+                        "nickname": user.nickname,
+                        "level": user.level
+                    }
                 },
                 status=200)
         
@@ -178,20 +186,26 @@ def signup(request):
 @login_check
 def me(request):
     try:
-        # login_check에서 request.user_id 넣어줌
-        user = User.objects.get(id=request.user_id) 
+        user = User.objects.get(user_id=request.user_id)
+
         return common_response(
-            success=True, 
-            message="조회 성공",
+            success=True,
+            message="유저 정보 조회 성공",
             data={
-                "id": user.user_id, 
-                "email": user.email, 
-                "nickname": user.nickname,
-                "role": "admin" if user.is_admin else "user"
-            }
+                "user": {
+                    "id": user.user_id,
+                    "nickname": user.nickname,
+                    "level": user.level
+                }
+            },
+            status=200
         )
+
     except User.DoesNotExist:
         return common_response(success=False, message="존재하지 않는 회원입니다.", status=404)
+    except Exception as e:
+        return common_response(success=False, message="서버 에러 발생", status=500) # static -> status 수정
+
 
 @require_safe
 @login_check
@@ -300,22 +314,29 @@ def update_user_profile(request):
         return common_response(success=False, message="서버 에러", status=500)
 
 @csrf_exempt
-@require_POST # POST
+@require_POST
 def refresh_token_check(request):
     try:
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식", status=400)
+
         client_refresh_token = data.get('refresh_token')
+        
 
         if not client_refresh_token:
             return common_response(success=False, message="토큰이 없습니다.", status=400)
 
-        payload = jwt.decode(client_refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
-        user_id = payload.get('user_id')
+        try:
+            payload = jwt.decode(client_refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
+            user_id = payload.get('user_id')
+        except jwt.ExpiredSignatureError:
+            return common_response(success=False, message="만료된 토큰입니다.", status=401)
+        except jwt.InvalidTokenError as e:
+            return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
 
-        if not RefreshToken.objects.filter(user_id=user_id, token=client_refresh_token).exists():
-            return common_response(success=False, message="만료된 토큰입니다. 다시 로그인 하세요", status=401)
-
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(user_id=user_id)
         new_access_token = create_access_token(user.user_id)
 
         return common_response(
@@ -325,7 +346,8 @@ def refresh_token_check(request):
             status=200
         )
     except Exception as e:
-        # 예외 처리 로직 유지
+        print(f"[DEBUG] FATAL ERROR: {e}", flush=True)
+        traceback.print_exc()
         return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
 
 

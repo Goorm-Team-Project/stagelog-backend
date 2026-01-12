@@ -28,6 +28,8 @@ urlpatterns = [
     path('login/refresh', refresh_token_check, name='refresh_token_check'),
     #로그아웃
     path('logout', logout, name='logout'),
+    #로그인 유지
+    path('me', me, name='me'),
 
     #테스트용
     path('kakao/test', kakao_test_page),      # 1. 여기로 접속하면 로그인 시작
