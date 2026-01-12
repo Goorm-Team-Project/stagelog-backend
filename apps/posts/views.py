@@ -13,6 +13,23 @@ from .models import Post, Comment, PostReaction, Report, ReactionType
 
 # Create your views here.
 
+# 고정 카테고리: 후기/질문/정보
+CATEGORY_MAP = {
+    "review": "후기", "후기": "후기",
+    "question": "질문", "질문": "질문",
+    "info": "정보", "정보": "정보",
+}
+
+def normalize_category(raw: str)
+    if raw is None:
+        return None
+    v = raw.strip()
+    if not v:
+        return None
+    key = v.lower()
+    return CATEGORY_MAP.get(key) or CATEGORY_MAP.get(v)
+
+
 def _parse_json(request):
     try:
         return json.loads(request.body or b"{}")
@@ -57,7 +74,7 @@ def event_posts_list(request, event_id: int):
 
     if request.method == "POST":
         return event_posts_create(request, event_id)
-    category = (request.GET.get("category") or "").strip()
+    category = normalize_category(request.GET.get("category"))
     search = (request.GET.get("search") or "").strip()
     sort  = (request.GET.get("sort") or "latest").strip().lower()
 
@@ -69,7 +86,10 @@ def event_posts_list(request, event_id: int):
 
     qs = Post.objects.filter(event_id=event_id).select_related("user")
 
+    # '전체'는 category 파라미터 안보내는 방식으로 처리
     if category:
+        if category not in ("후기", "질문", "정보"):
+            return common_response(False, message="category는 전체/후기/질문/정보 중 하나여야 합니다.", status=400)
         qs = qs.filter(category=category)
 
     if search:
@@ -108,13 +128,16 @@ def event_posts_create(request, event_id: int):
     if data is None:
         return common_response(False, message="잘못된 JSON 형식입니다.", status=400)
     
-    category = (data.get("category") or "").strip()
+    category = normalize_category(data.get("category"))
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
     image_url = (data.get("image_url") or "").strip() or None
 
     if not category or not title or not content:
         return common_response(False, message="카테고리/제목/내용는 필수입니다.", status=400)
+
+    if category not in ("후기", "질문", "정보"):
+        return common_response(False, message="category는 후기/질문/정보 중 하나여야 합니다.", status=400)
 
     p = Post.objects.create(
         event_id=event_id,
@@ -166,8 +189,15 @@ def post_update(request, post_id: int):
     for field in ("category", "title", "content", "image_url"):
         if field in data:
             value = data.get(field)
+        
+        if field == "category":
+            value = normalize_category(value)
+            if value is None or value not in ("후기", "질문", "정보"):
+                return common_response(False, message="category는 후기/질문/정보 중 하나여야 합니다.", status=400)
+        else:
             if isinstance(value, str):
                 value = value.strip()
+
             setattr(p, field, value)
             changed = True
 

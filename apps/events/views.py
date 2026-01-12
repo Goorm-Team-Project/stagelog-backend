@@ -19,6 +19,9 @@ def _event_summary(e: Event) -> dict:
         "end_date": e.end_date.isoformat(),
         "venue": e.venue,
         "poster": e.poster,
+
+        # 즐겨찾기 갯수 포함 (없으면 0)
+        "favorite_count": int(getattr(e, "favorite_count", 0) or 0),
     }
 
 def _event_detail(e: Event) -> dict:
@@ -45,7 +48,8 @@ def _event_detail(e: Event) -> dict:
 @require_GET
 def event_list(request):
     search = (request.GET.get("search") or "").strip()
-    sort = (request.GET.get("sort") or "name").strip().lower()
+    # 기본 최신순
+    sort = (request.GET.get("sort") or "latest").strip().lower()
 
     #page/size 기본값
     try:
@@ -66,19 +70,18 @@ def event_list(request):
             Q(venue__icontains=search)
         )
 
-    #--정렬 매핑 (팀 노션 명세의 sort 값이 확정되면 이 부분 수정)--
+    # 항상 favorite_count 내려주기 (annotate 고정)
+    qs = qs. annotate(favorite_count=Count("bookmarks"))
+
+    # sort 표준값
+    ## sort=latest(기본), sort=favorite, sort=update, sort=name +) 내부 alias: fav, popular
     if sort in ("favorite", "fav", "bookmark", "popular", "popularity"):
-        qs = qs.annotate(
-            favorite_count=Count("bookmarks")
-        ).order_by(
-            "-favorite_count", "-update_date", "-event_id"
-        )
+        qs = qs.order_by("-favorite_count", "-update_date", "-event_id")
     elif sort in ("latest", "recent"):
         qs = qs.order_by("-start_date", "-event_id")
     elif sort in ("update",):
         qs = qs.order_by("-update_date", "-event_id")
     else:
-        # default: 이름순
         qs = qs.order_by("title", "event_id")
 
     paginator = Paginator(qs, size)
