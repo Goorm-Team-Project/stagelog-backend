@@ -1,17 +1,23 @@
 from pathlib import Path
 import os
 import environ
+import sys
 
 # 1. 환경변수
 env = environ.Env(
     DEBUG=(bool, False)
 )
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
+KAKAO_REDIRECT_URI = env('KAKAO_REDIRECT_URI')
+KAKAO_ACCESS_TOKEN_CLIENT_SECRET = env('KAKAO_ACCESS_TOKEN_CLIENT_SECRET')
 
 # 2. 앱 설정 (DRF, SimpleJWT 제거)
 INSTALLED_APPS = [
@@ -27,6 +33,8 @@ INSTALLED_APPS = [
 
     # Local Apps
     'users',
+    'events',
+    'posts',
 ]
 
 MIDDLEWARE = [
