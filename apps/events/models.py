@@ -29,10 +29,12 @@ class Event(models.Model):
     time = models.CharField(max_length=255, blank=True, null=True) # 금(10:00 - 12:00)" 같은 문자열 가능
 
     # 동기화/메타
-    update_date = models.DateTimeField(auto_now=True)
+
+    # 260112 수정 - upsert시 값 덮어쓰기 가능
+    update_date = models.DateTimeField(default=timezone.now)
     relate_url = models.CharField(max_length=500, blank=True, null=True)
     host = models.CharField(max_length=255, blank=True, null=True)
-    genre = models.CharField(max_length=255, blank=True, null=True)
+    genre = models.CharField(max_length=255, blank=True, null=True, default="대중음악")
 
     class Meta:
         db_table = 'events'
