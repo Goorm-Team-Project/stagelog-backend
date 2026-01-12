@@ -20,7 +20,7 @@ CATEGORY_MAP = {
     "info": "정보", "정보": "정보",
 }
 
-def normalize_category(raw: str)
+def normalize_category(raw: str):
     if raw is None:
         return None
     v = raw.strip()
