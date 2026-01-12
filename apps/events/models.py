@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 # Main Principles:
 # 1. event_id는 KOPIS의 공연 ID와 동일하게 저장
@@ -47,11 +48,7 @@ class Event(models.Model):
         return f"[{self.kopis_id}] {self.title}"
 
     class Meta:
-        db_table = "bookmark"
-        constraints = [
-            models.UniqueConstraint(fields=["user", "event"], name="uq_bookmark_user_event")
-        
-        ]
+        db_table = "events"
     
     def __str__(self):
         return f"Bookmark(user_id={self.user_id}, event_id={self.event_id})"
