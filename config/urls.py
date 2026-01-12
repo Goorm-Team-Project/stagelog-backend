@@ -18,23 +18,23 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin', admin.site.urls),
     # merge 충돌 제거
     # Auth / Users (login 라우팅)
-    path('api/auth/', include('users.urls')),
-    path('api/users/', include('users.urls')),
+    path('api/auth', include('users.urls')),
+    path('api/users', include('users.urls')),
 
     # 즐겨찾기 라우팅
-    path('api/bookmarks/', include('bookmarks.urls')),
+    path('api/bookmarks', include('bookmarks.urls')),
 
     # Events (events 라우팅)
-    path('api/events/', include('events.urls')),
+    path('api/events', include('events.urls')),
 
     # Posts (posts 라우팅)
-    path('api/posts/', include('posts.urls')),
+    path('api/posts', include('posts.urls')),
 
     # Comments 라우팅
-    path("api/comments/", include("posts.comment_urls")),
+    path("api/comments", include("posts.comment_urls")),
 
     # 알림 라우팅
     path('api/notifications', include('notifications.urls')),
