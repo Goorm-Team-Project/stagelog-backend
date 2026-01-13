@@ -38,9 +38,6 @@ def toggle_bookmark(request, event_id):
         print(f"Bookmark Error: {e}")
         return common_response(False, message="서버 에러 발생", status=500)
 
-from django.core.paginator import Paginator, EmptyPage
-from apps.bookmarks.models import Bookmark
-
 @require_safe 
 @login_check
 def mypage(request):
