@@ -38,3 +38,18 @@ class Event(models.Model):
 
     def __str__(self):
         return f"[{self.kopis_id}] {self.title}"
+
+class ArtistMapping(models.Model):
+    mapping_id = models.BigAutoField(primary_key=True)
+    raw_name = models.CharField(max_length=100, unique=True)
+    stage_name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "artist_mapping"
+        indexes = [
+            models.Index(fields=["raw_name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.raw_name} -> {self.stage_name}"
