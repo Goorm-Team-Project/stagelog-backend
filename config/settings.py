@@ -65,17 +65,19 @@ TEMPLATES = [
 ]
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# 3. 데이터베이스 (MariaDB)
-DATABASES = {
-    'default': env.db(),
-}
-# RDS의 SSL 강제 옵션(require_secure_transport=ON)에 대응하기 위한 설정
-# env.db()가 생성한 딕셔너리에 OPTIONS 항목을 추가합니다.
-DATABASES['default']['OPTIONS'] = {
+# 3. 데이터베이스 (MariaDB/MySQL)
+_db_config = env.db()
+
+# 강제로 SSL 옵션을 주입
+_db_config['OPTIONS'] = {
     'ssl': {
-        'ca': None,  # 별도의 인증서 파일 없이도 RDS 연결을 허용합니다.
+        'ca': None,
     },
     'charset': 'utf8mb4',
+}
+
+DATABASES = {
+    'default': _db_config,
 }
 
 # 4. 커스텀 유저 모델
