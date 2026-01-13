@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Get GitHub Action IP
         id: ip
         run: echo "ipv4=$(curl -s https://ifconfig.me)" >> $GITHUB_OUTPUT
@@ -64,6 +64,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e #명령어 실패시 즉시종료
             cd ~/stagelog-project
             echo ${{ secrets.DOCKERHUB_TOKEN }} | sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
             sudo docker-compose pull
