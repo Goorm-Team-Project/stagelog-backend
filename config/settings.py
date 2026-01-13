@@ -73,6 +73,7 @@ _db_config['OPTIONS'] = {
     'ssl': {
         'ca': None,
     },
+    'ssl_mode': 'REQUIRED',
     'charset': 'utf8mb4',
 }
 
