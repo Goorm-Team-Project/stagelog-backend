@@ -9,13 +9,16 @@ from .views import (kakao_login,
         update_user_profile,
         refresh_token_check,
         logout,
-        naver_login
+        naver_login,
+        google_login,
+        google_test_page,
+        google_callback_test
         )
 
 urlpatterns = [
     #카카오 로그인
     path('login/kakao', kakao_login, name='kakao_login'),
-    # path('/login/google', google_login, name='google_login'),
+    path('login/google', google_login, name='google_login'),
     path('login/naver', naver_login, name='naver_login'),
     #회원가입
     path('signup', signup, name='signup'),
@@ -35,4 +38,7 @@ urlpatterns = [
     #테스트용
     path('kakao/test', kakao_test_page),      # 1. 여기로 접속하면 로그인 시작
     path('callback', kakao_callback_test),
+
+    path('google/test', google_test_page),       # 시작점
+    path('google/callback', google_callback_test), # 도착점
 ]
