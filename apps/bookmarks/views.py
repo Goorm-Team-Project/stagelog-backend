@@ -2,11 +2,12 @@
 
 from django.views.decorators.http import require_http_methods, require_safe
 from django.contrib.auth import get_user_model
-from apps.common.utils import common_response, login_check
-from events.models import Event
-from bookmarks.models import Bookmark
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage
+
+from common.utils import common_response, login_check
+from events.models import Event
+from .models import Bookmark
 
 User = get_user_model()
 
@@ -38,8 +39,6 @@ def toggle_bookmark(request, event_id):
         print(f"Bookmark Error: {e}")
         return common_response(False, message="서버 에러 발생", status=500)
 
-from django.core.paginator import Paginator, EmptyPage
-from apps.bookmarks.models import Bookmark
 
 @require_safe 
 @login_check
