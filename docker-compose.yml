@@ -1,24 +1,24 @@
 services:
-  db:
-    image: mariadb:11.8.3
-    container_name: stagelog-db
-    environment:
-      MARIADB_DATABASE: stagelog
-      MARIADB_USER: test
-      MARIADB_PASSWORD: test
-      MARIADB_ROOT_PASSWORD: root
-      TZ: Asia/Seoul
-    ports:
-      - "3306:3306"
-    volumes:
-      - mariadb_data:/var/lib/mysql
-      - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/my.cnf:ro
-      - ./docker/mariadb/initdb.d:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
+  # db:
+  #   image: mariadb:11.8.3
+  #   container_name: stagelog-db
+  #   environment:
+  #     MARIADB_DATABASE: stagelog
+  #     MARIADB_USER: test
+  #     MARIADB_PASSWORD: test
+  #     MARIADB_ROOT_PASSWORD: root
+  #     TZ: Asia/Seoul
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mariadb_data:/var/lib/mysql
+  #     - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+  #     - ./docker/mariadb/initdb.d:/docker-entrypoint-initdb.d:ro
+  #   healthcheck:
+  #     test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 20
 
   api:
     # build:
@@ -35,7 +35,7 @@ services:
       - "8000:8000"
     # volumes:
     #   - .:/app
-    command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    #command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
 
 volumes:
   mariadb_data:
