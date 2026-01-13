@@ -27,6 +27,17 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+
+      - name: Create .env file
+        run: |
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "DEBUG=${{ secrets.DEBUG }}" >> .env
+          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
+          echo "KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}" >> .env
+          echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}" >> .env
+          echo "KAKAO_ACCESS_TOKEN_CLIENT_SECRET=${{ secrets.KAKAO_ACCESS_TOKEN_CLIENT_SECRET }}" >> .env
+
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -54,7 +65,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,docker/mariadb/**" 
+          source: "docker-compose.yml,docker/mariadb/**,.env" 
           target: "~/stagelog-project"
           strip_components: 0 # 폴더 구조 유지
 
