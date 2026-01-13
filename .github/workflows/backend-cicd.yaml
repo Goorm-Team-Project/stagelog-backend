@@ -47,15 +47,16 @@ jobs:
             --group-id ${{ secrets.AWS_SG_ID }} \
             --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
 
-      # [중요] docker-compose.yml 파일을 EC2로 전송합니다.
-      - name: Copy docker-compose.yml to EC2
+      # docker-compose.yml과 관련 설정 폴더를 모두 보냅니다.
+      - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "./docker-compose.yml"
+          source: "docker-compose.yml,docker/mariadb/**" 
           target: "~/stagelog-project"
+          strip_components: 0 # 폴더 구조 유지
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3

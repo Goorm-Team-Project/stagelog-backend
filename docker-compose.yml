@@ -21,10 +21,11 @@ services:
       retries: 20
 
   api:
-    build:
-      context: .
-      dockerfile: docker/api/Dockerfile
-    container_name: stagelog-api
+    # build:
+    #   context: .
+    #   dockerfile: docker/api/Dockerfile
+    image: stagelog/stagelog-repo:backend
+    container_name: backend-container
     env_file:
       - .env
     depends_on:
