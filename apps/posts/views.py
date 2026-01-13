@@ -67,7 +67,67 @@ def _comment_item(c: Comment) -> dict:
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
     }
 
+# 커뮤니티 > 전체 게시글 목록
+@csrf_exempt
+@require_GET
+def posts_list(request):
+    category = normalize_category(request.GET.get("category"))  # 전체면 None
+    search = (request.GET.get("search") or "").strip()
+    sort  = (request.GET.get("sort") or "latest").strip().lower()
 
+    try:
+        page = int(request.GET.get("page") or 1)
+        size = int(request.GET.get("size") or 10)
+    except ValueError:
+        return common_response(False, message="page/size는 정수여야 합니다.", status=400)
+
+    if page <= 0 or size <= 0 or size > 100:
+        return common_response(False, message="page는 1 이상, size는 1~100 범위에 포함되어야 합니다.", status=400)
+
+    qs = Post.objects.select_related("user", "event")
+
+    if category:
+        if category not in ("후기", "질문", "정보"):
+            return common_response(False, message="category는 전체/후기/질문/정보 중 하나여야 합니다.", status=400)
+        qs = qs.filter(category=category)
+
+    if search:
+        qs = qs.filter(Q(title__icontains=search) | Q(content__icontains=search))
+
+    if sort in ("popular", "like", "likes"):
+        qs = qs.order_by("-like_count", "-created_at", "-post_id")
+    elif sort in ("views", "view"):
+        qs = qs.order_by("-views", "-created_at", "-post_id")
+    else:
+        qs = qs.order_by("-created_at", "-post_id")
+
+    paginator = Paginator(qs, size)
+    page_obj = paginator.get_page(page)
+
+    posts = []
+    for p in page_obj.object_list:
+        posts.append({
+            **_post_summary(p),
+            # ✅ 커뮤니티 리스트에 “어느 공연 글인지” 필요
+            "event": {
+                "event_id": p.event_id,
+                "title": getattr(p.event, "title", None),
+                "poster": getattr(p.event, "poster", None),
+            }
+        })
+
+    data = {
+        "posts": posts,
+        "total_count": paginator.count,
+        "total_pages": paginator.num_pages,
+        "page": page_obj.number,
+        "size": size,
+    }
+    return common_response(True, data=data, message="전체 게시글 목록 조회 성공", status=200)
+
+
+
+# 공연별 > 게시글 목록
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def event_posts_list(request, event_id: int):
