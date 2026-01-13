@@ -336,6 +336,10 @@ def refresh_token_check(request):
         except jwt.InvalidTokenError as e:
             return common_response(success=False, message="유효하지 않은 토큰입니다.", status=401)
 
+        is_exist = RefreshToken.objects.filter(user_id=user_id, token=client_refresh_token).exists()
+        if not is_exist:
+            return common_response(success=False, message="유효하지 않거나 만료된 토큰입니다.", status=401)
+
         user = User.objects.get(user_id=user_id)
         new_access_token = create_access_token(user.user_id)
 
@@ -345,6 +349,8 @@ def refresh_token_check(request):
             data={"access_token": new_access_token},
             status=200
         )
+    except User.DoesNotExist:
+        return common_response(success=False, message="존재하지 않는 회원입니다.", stats=404)
     except Exception as e:
         print(f"[DEBUG] FATAL ERROR: {e}", flush=True)
         traceback.print_exc()
