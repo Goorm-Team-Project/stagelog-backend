@@ -28,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Create .env file
         run: |
           echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
@@ -36,10 +39,6 @@ jobs:
           echo "KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}" >> .env
           echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}" >> .env
           echo "KAKAO_ACCESS_TOKEN_CLIENT_SECRET=${{ secrets.KAKAO_ACCESS_TOKEN_CLIENT_SECRET }}" >> .env
-
-
-      - name: Checkout code
-        uses: actions/checkout@v4
 
       - name: Get GitHub Action IP
         id: ip
