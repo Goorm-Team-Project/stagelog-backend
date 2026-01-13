@@ -29,14 +29,14 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
+      #db:
+       # condition: service_healthy
     ports:
       - "8000:8000"
     # volumes:
     #   - .:/app
     #command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
-
+    command: bash -c "python manage.py migrate && gunicorn --bind 0.0.0.0:8000 config.wsgi:application"
 volumes:
   mariadb_data:
 
