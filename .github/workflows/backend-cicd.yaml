@@ -15,13 +15,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
+      - name: Get current time
+        uses: josStorer/get-current-time@v2
+        id: current-time
+        with:
+          format: YYYYMMDD-HHmm
+          utcOffset: "+09:00" # 한국 시간 기준
+      
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/api/Dockerfile # 아까 확인한 실제 경로!
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:backend
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:backend
+            ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:backend-${{ steps.current-time.outputs.formattedTime }}
 
   deploy:
     needs: build-and-push
@@ -40,7 +49,7 @@ jobs:
           echo "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}" >> .env
           echo "KAKAO_ACCESS_TOKEN_CLIENT_SECRET=${{ secrets.KAKAO_ACCESS_TOKEN_CLIENT_SECRET }}" >> .env
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          
+
       - name: Get GitHub Action IP
         id: ip
         run: echo "ipv4=$(curl -s https://ifconfig.me)" >> $GITHUB_OUTPUT
