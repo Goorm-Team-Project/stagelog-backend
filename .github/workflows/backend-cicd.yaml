@@ -74,8 +74,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,docker/mariadb/**,.env" 
-          target: "~/stagelog-project"
+          source: "docker-compose.yml,.env" 
+          target: "~/stagelog-backend"
           strip_components: 0 # 폴더 구조 유지
 
       - name: Deploy via SSH
