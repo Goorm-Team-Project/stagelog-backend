@@ -37,7 +37,9 @@ services:
     # volumes:
     #   - .:/app
     #command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
-    command: bash -c "gunicorn --bind 0.0.0.0:8000 config.wsgi:application --timeout 120"
+    command: bash -c "python manage.py migrate --fake-initial &&
+         python manage.py migrate &&
+         gunicorn --bind 0.0.0.0:8000 config.wsgi:application --timeout 120"
 
 volumes:
   mariadb_data:
