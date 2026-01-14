@@ -18,5 +18,5 @@ COPY . /app/
 EXPOSE 8000
 
 # 3. [추가] 실행 명령 (ETL과 달리 백엔드는 서버가 계속 떠있어야 함)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
+#CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
 

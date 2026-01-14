@@ -86,7 +86,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e #명령어 실패시 즉시종료
-            cd ~/stagelog-project
+            cd ~/stagelog-backend
             echo ${{ secrets.DOCKERHUB_TOKEN }} | sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
             sudo docker-compose pull
             sudo docker-compose up -d
