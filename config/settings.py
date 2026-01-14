@@ -99,6 +99,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+#정적파일경로설정
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 7. Trailing Slash 제거
