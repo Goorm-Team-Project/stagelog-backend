@@ -294,7 +294,7 @@ def google_login(request):
         
 def social_login(provider, provider_id, email=None):
     try:        
-        user = User.objects.filter(provider='provider', provider_id=provider_id).first()
+        user = User.objects.filter(provider=provider, provider_id=provider_id).first()
         
         if user:
             jwt_access_token = create_access_token(user.user_id)
