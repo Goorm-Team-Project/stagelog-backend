@@ -318,7 +318,7 @@ def social_login(provider, provider_id, email=None):
         else:
             email = None # 카카오 비즈앱 아니면 이메일 못 가져올 수 있음
             try:
-                register_token = create_register_token("kakao", provider_id, email)
+                register_token = create_register_token(provider, provider_id, email)
             except Exception as e:
                 traceback.print_exc() # [수정] file=sys.stdout 제거 (버퍼링 방지)
                 return common_response(success=False, message="등록 토큰 인코딩 실패", status=500)
@@ -381,12 +381,27 @@ def signup(request):
             is_posts_notification_sub=is_posts_notification_sub,
         )
 
-        access_token = create_access_token(user.user_id)
+        try:
+            access_token = create_access_token(user.user_id)
+            refresh_token = create_refresh_token(user.user_id)
+            RefreshToken.objects.create(user=user, token=refresh_token)
+        except Exception as e:
+            print("singup 호출 토큰 처리 도중 오류가 발생했습니다.")
+            traceback.print_exc()
+            return common_response(success=False, message="서버 내부 오류", status=500)
         
         return common_response(
             success=True,
             message="가입 완료", 
-            data={"access_token": access_token},
+            data={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user" : {
+                    "id" : user.user_id,
+                    "nickname": user.nickname,
+                    "level" : user.level
+                }
+            },
             status=201
         )
 
