@@ -152,8 +152,7 @@ def kakao_login(request):
             return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
         
         code = data.get('code')
-        state = data.get('state')
-        if not code or not state:
+        if not code:
             return common_response(success=False, message="인가 코드 에러.", status=400)
         
         access_token_req_url = "https://kauth.kakao.com/oauth/token"
