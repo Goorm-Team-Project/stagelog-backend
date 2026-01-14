@@ -1,17 +1,23 @@
 from pathlib import Path
 import os
 import environ
+import sys
 
 # 1. 환경변수
 env = environ.Env(
     DEBUG=(bool, False)
 )
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
+KAKAO_REDIRECT_URI = env('KAKAO_REDIRECT_URI')
+KAKAO_ACCESS_TOKEN_CLIENT_SECRET = env('KAKAO_ACCESS_TOKEN_CLIENT_SECRET')
 
 # 2. 앱 설정 (DRF, SimpleJWT 제거)
 INSTALLED_APPS = [
@@ -27,6 +33,10 @@ INSTALLED_APPS = [
 
     # Local Apps
     'users',
+    'events',
+    'posts',
+    'bookmarks',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -93,4 +103,4 @@ if not DEBUG:
 # 9. JWT 설정 (수동 구현용 변수)
 # SimpleJWT 설정은 제거하고, 직접 구현 시 사용할 알고리즘/만료시간만 환경변수나 상수로 관리 추천
 JWT_ALGORITHM = 'HS256'
-JWT_EXP_DELTA_SECONDS = 60 * 30  # 30분
+JWT_EXP_DELTA_SECONDS = env.int('JWT_EXP_DELTA_SECONDS', default= 60 * 30)
