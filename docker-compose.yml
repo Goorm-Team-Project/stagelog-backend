@@ -9,7 +9,7 @@ services:
       MARIADB_ROOT_PASSWORD: root
       TZ: Asia/Seoul
     ports:
-      - "3306"
+      - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/my.cnf:ro
