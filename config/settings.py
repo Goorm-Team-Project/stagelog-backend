@@ -76,7 +76,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # 3. 데이터베이스 (MariaDB)
 DATABASES = {
-    'default': env.db(),
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'stagelog',
+        'USER': 'admin',
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', ''),
+        'PORT': '3306',
+        'OPTIONS': {
+            'ssl': {
+                'ca': os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
+            },
+        },
+    }
 }
 
 # 4. 커스텀 유저 모델

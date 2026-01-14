@@ -20,6 +20,7 @@ from django.urls import path, include
 from events import views as events_views
 from posts import views as posts_views
 from notifications import views as notifications_views
+from common.utils import health_check
 
 urlpatterns = [
     #admin은 Django 기본 구조상 prefix에 / 포함
@@ -47,4 +48,6 @@ urlpatterns = [
     # Notifications 라우팅
     path('api/notifications', notifications_views.get_notification_list, name='get_notification_list'),
     path('api/notifications/', include('notifications.urls')),
+
+    path('', health_check)
 ]

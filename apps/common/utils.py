@@ -1,9 +1,27 @@
 import jwt
 import datetime
 import functools
+import math
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.conf import settings
+
+def health_check(request):
+    return HttpResponse("OK", status=200)
+
+def user_exp_calculator(base_exp, user_level, decay_factor=0.1):
+    """
+    base_exp : 활동으로 획득하는 점수(글쓰기, 댓글 ...)
+    user_level : 현재 유저의 레벨
+    decay_factor : 경험치 획득 감소 계수
+    """
+    if user_level < 1:
+        user_level = 1
+    
+    multiplier = 1 / (1 + (decay_factor * (user_level - 1)))
+    exp = base_exp * multiplier
+
+    return max(1, round(final_xp))
 
 def common_response(success=True, data=None, message="", status=200):
     """
