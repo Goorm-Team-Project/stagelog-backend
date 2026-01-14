@@ -1,0 +1,35 @@
+# 1. 환경 변수 및 비밀 파일 (가장 중요!)
+.env
+.venv
+venv
+env
+*.env
+.vscode
+.idea
+
+# 2. 파이썬 관련 캐시 및 빌드 파일
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 3. 도커 관련 파일 (이미지 내부에는 필요 없음)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 4. 버전 관리 파일
+.git
+.gitignore
+.github/
+
+# 5. 장고 정적 파일 및 미디어 (보통 볼륨으로 관리하므로 제외)
+static/
+staticfiles/
+media/
+
+# 6. 기타 OS 및 로그 파일
+.DS_Store
+*.log
