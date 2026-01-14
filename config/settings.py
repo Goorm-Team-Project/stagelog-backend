@@ -85,8 +85,10 @@ DATABASES = {
         'PORT': '3306',
         'OPTIONS': {
             'ssl': {
-                'ca': os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
+                'ca': None,#os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
             },
+            'ssl_mode': 'REQUIRED',
+            'charset': 'utf8mb4',
         },
     }
 }
@@ -109,6 +111,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+#정적파일경로설정
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 7. Trailing Slash 제거
 APPEND_SLASH = False
