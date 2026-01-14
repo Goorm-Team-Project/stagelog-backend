@@ -1,7 +1,7 @@
 services:
-  db:
+  db-dev:
     image: mariadb:11.8.3
-    container_name: stagelog-db
+    container_name: stagelog-db-dev
     environment:
       MARIADB_DATABASE: stagelog
       MARIADB_USER: test
@@ -9,7 +9,7 @@ services:
       MARIADB_ROOT_PASSWORD: root
       TZ: Asia/Seoul
     ports:
-      - "3306:3306"
+      - "3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/my.cnf:ro
@@ -20,18 +20,18 @@ services:
       timeout: 3s
       retries: 20
 
-  api:
+  api-dev:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    container_name: stagelog-api
+    container_name: stagelog-api-dev
     env_file:
       - .env
     depends_on:
-      db:
+      db-dev:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - .:/app
     command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"

@@ -1,5 +1,5 @@
 import traceback, json, sys, requests
-import os, datetime, jwt
+import os, datetime, jwt, uuid
 from .models import User, RefreshToken
 from django.conf import settings
 from django.views.decorators.http import require_POST, require_safe, require_http_methods 
@@ -15,7 +15,7 @@ from apps.common.utils import (
 
 # redirect, HttpResponse 임포트 확인
 from django.shortcuts import redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 User = get_user_model()
 
@@ -35,6 +35,113 @@ def kakao_callback_test(request):
         <textarea cols="100" rows="5">{code}</textarea>
     """)
 
+@require_safe
+def naver_test_page(request):
+    client_id = settings.NAVER_REST_API_KEY
+    
+    redirect_uri = settings.NAVER_REDIRECT_URI
+    
+    state = str(uuid.uuid4())
+    
+    url = f"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&state={state}"
+    
+    return redirect(url)
+
+@require_safe
+def google_test_page(request):
+    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    client_id = settings.GOOGLE_REST_API_KEY
+    redirect_uri = settings.GOOGLE_REDIRECT_URI
+    scope = "https://www.googleapis.com/auth/userinfo.profile"
+    state = str(uuid.uuid4())
+    
+    url = f"{base_url}?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope}&state={state}"
+    
+    return redirect(url)
+
+@require_safe
+def google_callback_test(request):
+    """
+    2. 구글에서 코드를 받아와서 -> 바로 토큰 교환 -> 유저 정보 출력 (원스톱)
+    """
+    code = request.GET.get('code')
+    
+    if not code:
+        return JsonResponse({"error": "코드가 없습니다."}, status=400)
+
+    # A. 토큰 발급 요청
+    token_req_url = "https://oauth2.googleapis.com/token"
+    req_data = {
+        "code": code,
+        "client_id": settings.GOOGLE_REST_API_KEY,
+        "client_secret": settings.GOOGLE_ACCESS_TOKEN_CLIENT_SECRET,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }
+    
+    token_res = requests.post(token_req_url, data=req_data)
+    token_json = token_res.json()
+    
+    if 'access_token' not in token_json:
+        return JsonResponse({"error": "토큰 발급 실패", "details": token_json}, status=400)
+        
+    google_access_token = token_json.get('access_token')
+
+    # B. 유저 정보 요청
+    user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    headers = {"Authorization": f"Bearer {google_access_token}"}
+    
+    user_res = requests.get(user_info_url, headers=headers)
+    user_info = user_res.json()
+
+    # C. 결과 출력
+    return JsonResponse({
+        "message": "구글 로그인 테스트 성공!",
+        "token": token_json,
+        "user_info": user_info
+    }, json_dumps_params={'ensure_ascii': False})
+
+@require_safe
+def naver_callback_test(request):
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    
+    if not code:
+        return JsonResponse({"error": "코드가 없습니다."}, status=400)
+
+    # 1. 네이버한테 "토큰 내놔" 요청 (Access Token 발급)
+    token_url = "https://nid.naver.com/oauth2.0/token"
+    token_params = {
+        "grant_type": "authorization_code",
+        "client_id" : settings.NAVER_REST_API_KEY,
+        "redirect_uri" : settings.NAVER_REDIRECT_URI,
+        "code" : code,
+        "client_secret" : settings.NAVER_ACCESS_TOKEN_CLIENT_SECRET,
+        "state": state
+    }
+    
+    token_res = requests.get(token_url, params=token_params)
+    token_json = token_res.json()
+    
+    if 'access_token' not in token_json:
+        return JsonResponse(token_json, status=400)
+        
+    access_token = token_json.get('access_token')
+
+    # 2. 토큰으로 "유저 정보 내놔" 요청 (User Info)
+    user_info_url = "https://openapi.naver.com/v1/nid/me"
+    headers = {'Authorization': f'Bearer {access_token}'}
+    
+    user_res = requests.get(user_info_url, headers=headers)
+    user_info = user_res.json()
+
+    # 3. 브라우저 화면에 결과 바로 뿌리기 (성공!)
+    return JsonResponse({
+        "message": "로그인 테스트 성공!",
+        "token_data": token_json,
+        "user_info": user_info
+    }, json_dumps_params={'ensure_ascii': False})
+
 @csrf_exempt
 @require_POST # POST만 허용
 def kakao_login(request):
@@ -45,10 +152,9 @@ def kakao_login(request):
             return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
         
         code = data.get('code')
-        if not code:
+        state = data.get('state')
+        if not code or not state:
             return common_response(success=False, message="인가 코드 에러.", status=400)
-
-        # ... (중략: 카카오 토큰 요청 로직) ...
         
         access_token_req_url = "https://kauth.kakao.com/oauth/token"
         access_token_req_data = {
@@ -62,7 +168,6 @@ def kakao_login(request):
         token_res = requests.post(access_token_req_url, data=access_token_req_data)
 
         if token_res.status_code != 200:
-            # [수정] 저번에 고친 부분 (token.res -> token_res)
             print(f"Kakao token error: {token_res.json()}", flush=True) 
             return common_response(success=False, message="카카오 액세스 토큰 발급 실패", status=400)
         
@@ -79,14 +184,122 @@ def kakao_login(request):
         user_info = users_res.json()
         provider_id = str(user_info.get('id'))
         
-        user = User.objects.filter(provider='kakao', provider_id=provider_id).first()
+        return social_login('kakao', provider_id, None)
+    
+    except Exception as e:
+        traceback.print_exc()
+        return common_response(success=False, message="서버 에러", status=500)
+
+@csrf_exempt
+@require_POST
+def naver_login(request):
+    try:
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
+        
+        code = data.get('code')
+        state = data.get('state')
+        if not code or not state:
+            return common_response(success=False, message="인가 코드 에러.", status=400)
+        
+        access_token_req_url = "https://nid.naver.com/oauth2.0/token"
+        access_token_req_data = {
+            "grant_type": "authorization_code",
+            "client_id" : settings.NAVER_REST_API_KEY,
+            "redirect_uri" : settings.NAVER_REDIRECT_URI,
+            "code" : code,
+            "client_secret" : settings.NAVER_ACCESS_TOKEN_CLIENT_SECRET,
+            "state": state
+        }
+
+        token_res = requests.post(access_token_req_url, data=access_token_req_data)
+
+        if token_res.status_code != 200:
+            print(f"Kakao token error: {token_res.json()}", flush=True) 
+            return common_response(success=False, message="네이버 액세스 토큰 발급 실패", status=400)
+        
+        naver_access_token = token_res.json().get('access_token')
+
+        user_info_url = "https://openapi.naver.com/v1/nid/me"
+        headers = {"Authorization": f"Bearer {naver_access_token}"}
+        users_res = requests.get(user_info_url, headers=headers)
+
+        if users_res.status_code != 200:
+            print(f"Naver User Info Error: {users_res.json()}", flush=True)
+            return common_response(success=False, message="네이버 사용자 정보 조회 실패", status=500)
+
+        user_info = users_res.json().get('response')
+        provider_id = str(user_info.get('id'))
+        
+        return social_login('naver', provider_id, None)
+    
+    except Exception as e:
+        traceback.print_exc()
+        return common_response(success=False, message="서버 에러", status=500)
+
+
+@csrf_exempt
+@require_POST
+def google_login(request):
+    try:
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return common_response(success=False, message="잘못된 JSON 형식입니다.", status=400)
+        
+        code = data.get('code')
+        
+        if not code:
+            return common_response(success=False, message="인가 코드 에러.", status=400)
+
+        # 1. 구글 토큰 발급 요청
+        access_token_req_url = "https://oauth2.googleapis.com/token"
+        access_token_req_data = {
+            "grant_type": "authorization_code",
+            "client_id": settings.GOOGLE_REST_API_KEY,
+            "client_secret": settings.GOOGLE_ACCESS_TOKEN_CLIENT_SECRET,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "code": code
+        }
+
+        token_res = requests.post(access_token_req_url, data=access_token_req_data)
+
+        if token_res.status_code != 200:
+            print(f"Google token error: {token_res.json()}", flush=True)
+            return common_response(success=False, message="구글 액세스 토큰 발급 실패", status=400)
+        
+        google_access_token = token_res.json().get('access_token')
+
+        # 2. 구글 사용자 정보 조회
+        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        headers = {"Authorization": f"Bearer {google_access_token}"}
+        
+        users_res = requests.get(user_info_url, headers=headers)
+
+        if users_res.status_code != 200:
+            print(f"Google User Info Error: {users_res.json()}", flush=True)
+            return common_response(success=False, message="사용자 정보 조회 실패", status=500)
+
+        user_info = users_res.json()
+        
+        provider_id = str(user_info.get('id'))
+        
+        return social_login('google', provider_id, None)
+    
+    except Exception as e:
+        traceback.print_exc()
+        return common_response(success=False, message="서버 에러", status=500)
+        
+        
+def social_login(provider, provider_id, email=None):
+    try:        
+        user = User.objects.filter(provider='provider', provider_id=provider_id).first()
         
         if user:
             jwt_access_token = create_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
-
-            print(f"\n========== [DEBUG] Login Success: {user.nickname} ==========", flush=True)
-            print(f"[DEBUG] Generated Refresh Token: {refresh_token}", flush=True)
 
             RefreshToken.objects.create(user=user, token=refresh_token)
             return common_response(

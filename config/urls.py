@@ -39,9 +39,6 @@ urlpatterns = [
     path('api/events/', include('events.urls')),
 
     # Posts (posts 라우팅)
-    ## /api/posts
-    path('api/posts', posts_views.posts_list, name='posts_list'),
-    ## /api/posts/<id> ...
     path('api/posts/', include('posts.urls')),
 
     # Comments 라우팅
