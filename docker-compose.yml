@@ -1,8 +1,9 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: docker/api/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: docker/api/Dockerfile
+    image: stagelog/stagelog-repo:api
     container_name: stagelog-api
     env_file:
       - .env
