@@ -6,9 +6,6 @@ services:
     container_name: stagelog-api
     env_file:
       - .env
-    depends_on:
-      db-dev:
-        condition: service_healthy
     ports:
       - "80:8000"
     volumes:
