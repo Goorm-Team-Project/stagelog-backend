@@ -20,7 +20,7 @@ class Event(models.Model):
     genre = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'events'
 
 class ArtistMapping(models.Model):
@@ -30,5 +30,5 @@ class ArtistMapping(models.Model):
     created_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'artist_mapping'
