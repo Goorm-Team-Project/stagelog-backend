@@ -19,7 +19,7 @@ def common_response(success=True, data=None, message="", status=200):
         "data": data,
     }
     # status 코드는 HTTP 응답 헤더에 설정됨
-    return JsonResponse(payload, status=status)
+    return JsonResponse(payload, status=status, json_dumps_params={'ensure_ascii': False})
 
 # 2. 액세스 토큰 생성 함수
 def create_access_token(user_id):
@@ -49,6 +49,18 @@ def create_refresh_token(user_id):
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return token
+
+# 회원가입용 임시 토큰 생성 함수
+def create_register_token(provider, provider_id, email):
+    payload = {
+        "provider": provider,
+        "provider_id": provider_id,
+        "email": email,
+        # 가입용은 짧게 (예: 10분)
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=10),
+        "iat": datetime.datetime.utcnow()
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 # 3. 토큰 검증 함수 (데코레이터로 쓸 수도 있고 직접 호출도 가능)
 def validate_token(token):
