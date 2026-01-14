@@ -11,7 +11,8 @@ services:
       - "80:8000"
     #volumes:
     #- .:/app
-    command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    #command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: bash -lc "python manage.py runserver 0.0.0.0:8000"
     logging:
       driver: awslogs
       options:
