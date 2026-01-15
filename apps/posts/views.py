@@ -35,6 +35,13 @@ def _parse_json(request):
         return json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         return None
+
+# 게시글 목록의 게시글 내용(content) 250자 Preview 로직
+def _truncate_250(text: str) -> str:
+    if not text:
+        return ""
+    return text[:250]
+
 def _post_summary(p: Post) -> dict:
     return {
         "post_id": p.post_id,
@@ -108,7 +115,11 @@ def posts_list(request):
     for p in page_obj.object_list:
         posts.append({
             **_post_summary(p),
-            # ✅ 커뮤니티 리스트에 “어느 공연 글인지” 필요
+
+            # 전체 게시글 목록: content는 250자 프리뷰 제한
+            "content": _truncate_250(p.content),
+
+            # 커뮤니티 리스트에 “어느 공연 글인지” 필요
             "event": {
                 "event_id": p.event_id,
                 "title": getattr(p.event, "title", None),
