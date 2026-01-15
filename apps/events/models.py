@@ -18,6 +18,7 @@ class Event(models.Model):
     relate_url = models.CharField(max_length=500, blank=True, null=True)
     host = models.CharField(max_length=255, blank=True, null=True)
     genre = models.CharField(max_length=255, blank=True, null=True)
+    group_name = models.CharField(max_length=100, null=True)
 
     class Meta:
         managed = True
