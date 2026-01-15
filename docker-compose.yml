@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: stagelog-api
+    env_file:
+      - .env
+    ports:
+      - "80:8000"
+    volumes:
+      - .:/app
+    command: bash -lc "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /aws/ec2/stagelog-backend
+        awslogs-create-group: "true"
