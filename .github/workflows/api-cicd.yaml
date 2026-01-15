@@ -2,7 +2,7 @@ name: Django API SERVER CI/CD
 
 on:
   push:
-    branches: [ "feature/devcicd" ] # 본인의 배포 브랜치명으로 수정
+    branches: [ "feature/devcicd", "develop" ] # 본인의 배포 브랜치명으로 수정
 
 jobs:
   build-and-push:
