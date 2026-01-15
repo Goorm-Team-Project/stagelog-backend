@@ -28,11 +28,19 @@ class Notification(models.Model):
         related_name='notifications',
         db_column='event_id'
     )
+    
+    relate_url = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
 
     class Type(models.TextChoices):
         COMMENT = 'comment', 'Comment'
         EVENT = 'event', 'Event'
-        LIKE = 'like', 'Like'
+        POST_LIKE = 'post_like', 'Postlike'
+        POST_DISLIKE = 'post_dislike', 'Postdislike'
+        NOTICE = 'notice', 'Notice'
 
     type = models.CharField(
         max_length=20,
