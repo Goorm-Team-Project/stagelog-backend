@@ -2,7 +2,7 @@ name: Django API SERVER CI/CD
 
 on:
   push:
-    branches: [ "feature/devcicd", "develop" ] # 본인의 배포 브랜치명으로 수정
+    branches: [ "develop" ] # 본인의 배포 브랜치명으로 수정
 
 jobs:
   build-and-push:
@@ -97,7 +97,7 @@ jobs:
           # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           # 'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api' ssm으로 만들어진 폴더의 권한 변경
           aws ssm send-command \
-            --instance-ids "${{ secrets.CICD_EC2_INSTANCE_ID }}" \
+            --instance-ids "${{ secrets.BACKEND_INSTANCE_EC2_ID }}" \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
