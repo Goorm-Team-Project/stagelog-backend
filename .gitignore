@@ -10,3 +10,6 @@ db.sqlite3
 
 # 개발 환경
 .env
+
+# 인증서
+certs/
