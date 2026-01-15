@@ -99,10 +99,10 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
-              'mkdir -p home/ec2-user/stagelog-api',
-              'echo \"$ENV_CONTENT\" > home/ec2-user/stagelog-api/.env',
-              'echo \"$DOCKER_COMPOSE_CONTENT\" > home/ec2-user/stagelog-api/docker-compose.yml',
-              'cd home/ec2-user/stagelog-api',
+              'mkdir -p /home/ec2-user/stagelog-api',
+              'echo \"$ENV_CONTENT\" > /home/ec2-user/stagelog-api/.env',
+              'echo \"$DOCKER_COMPOSE_CONTENT\" > /home/ec2-user/stagelog-api/docker-compose.yml',
+              'cd /home/ec2-user/stagelog-api',
               'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
               'docker-compose pull',
               'docker-compose up -d',
