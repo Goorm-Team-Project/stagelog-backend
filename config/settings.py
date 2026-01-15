@@ -13,6 +13,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
+db_mode = env('DB_MODE', default='sqlite')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
@@ -75,23 +76,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # 3. 데이터베이스 (MariaDB)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'stagelog',
-        'USER': 'admin',
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', ''),
-        'PORT': '3306',
-        'OPTIONS': {
-            'ssl': {
-                'ca': None,#os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
-            },
-            'ssl_mode': 'REQUIRED',
-            'charset': 'utf8mb4',
-        },
+if db_mode == 'sqlite':
+    DATABASES = {
+        'default' : {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'stagelog',
+            'USER': 'admin',
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', ''),
+            'PORT': '3306',
+            'OPTIONS': {
+                'ssl': {
+                    'ca': None,#os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
+                },
+                'ssl_mode': 'REQUIRED',
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+
 
 # 4. 커스텀 유저 모델
 AUTH_USER_MODEL = 'users.User' 
