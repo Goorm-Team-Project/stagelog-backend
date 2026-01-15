@@ -136,9 +136,9 @@ jobs:
       #       sudo docker-compose up -d
       #       sudo docker image prune -f
 
-      - name: Remove GitHub IP
-        if: always()
-        run: |
-          aws ec2 revoke-security-group-ingress \
-            --group-id ${{ secrets.AWS_SG_ID }} \
-            --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      # - name: Remove GitHub IP
+      #   if: always()
+      #   run: |
+      #     aws ec2 revoke-security-group-ingress \
+      #       --group-id ${{ secrets.AWS_SG_ID }} \
+      #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
