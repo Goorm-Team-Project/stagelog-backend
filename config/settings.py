@@ -111,8 +111,6 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
-#정적파일경로설정
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 7. Trailing Slash 제거
 APPEND_SLASH = False
@@ -126,3 +124,10 @@ if not DEBUG:
 # SimpleJWT 설정은 제거하고, 직접 구현 시 사용할 알고리즘/만료시간만 환경변수나 상수로 관리 추천
 JWT_ALGORITHM = 'HS256'
 JWT_EXP_DELTA_SECONDS = env.int('JWT_EXP_DELTA_SECONDS', default= 60 * 30)
+
+# 10. 정적파일경로설정
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# 11. ALB사용 시 리다이렉션 오류 방지
+# ALB가 전달해준 원래 호스트 정보를 신뢰합니다.
+USE_X_FORWARDED_HOST = True
