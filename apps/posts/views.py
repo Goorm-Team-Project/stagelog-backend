@@ -145,6 +145,22 @@ def event_posts_list(request, event_id: int):
 
     if request.method == "POST":
         return event_posts_create(request, event_id)
+
+    # GET: 공연 존재 확인 + 상단 공연 메타 구성(게시글 0개여도 반환)
+    try:
+        ev = Event.objects.get(event_id=event_id)
+    except Event.DoesNotExist:
+        return common_response(False, message="존재하지 않는 공연입니다.", status=404)
+
+    event_meta = {
+        "event_id": ev.event_id,
+        "title": ev.title,
+        "poster": ev.poster,
+        "artist": ev.artist,
+        "start_date": ev.start_date.isoformat() if ev.start_date else None,
+        "end_date": ev.end_date.isoformat() if ev.end_date else None,
+    }
+
     category = normalize_category(request.GET.get("category"))
     search = (request.GET.get("search") or "").strip()
     sort  = (request.GET.get("sort") or "latest").strip().lower()
@@ -178,7 +194,7 @@ def event_posts_list(request, event_id: int):
     page_obj = paginator.get_page(page)
 
     data = {
-        "event_id": str(event_id),
+        "event": event_meta,
         "posts": [_post_summary(p) for p in page_obj.object_list],
         "total_count": paginator.count,
         "total_pages": paginator.num_pages,
@@ -255,11 +271,13 @@ def post_update(request, post_id: int):
     if p.user_id != request.user_id:
         return common_response(False, message="수정 권한이 없습니다.", status=403)
 
-    # 부분 수정(PATCH)
+    # 부분 수정(PATCH) + bugfix: value가 정의되지 않은 상태(UnboundLocalError)
     changed = False
     for field in ("category", "title", "content", "image_url"):
         if field in data:
-            value = data.get(field)
+            continue
+
+        value = data.get(field)
         
         if field == "category":
             value = normalize_category(value)
@@ -269,8 +287,8 @@ def post_update(request, post_id: int):
             if isinstance(value, str):
                 value = value.strip()
 
-            setattr(p, field, value)
-            changed = True
+        setattr(p, field, value)
+        changed = True
 
     if not changed:
         return common_response(False, message="수정할 필드가 없습니다.", status=400)
