@@ -5,15 +5,23 @@ services:
     #   dockerfile: docker/api/Dockerfile
     image: stagelog/stagelog-repo:api
     container_name: stagelog-api
+    environment:
+      - PYTHONUNBUFFERED=1
     env_file:
       - .env
     ports:
       - "80:8000"
     #volumes:
     #- .:/app
-    command: bash -lc "python manage.py collectstatic --noinput&&
-                       python manage.py migrate &&
-                       gunicorn --bind 0.0.0.0:8000 config.wsgi:application --timeout 120"
+    command: >
+          bash -lc "python manage.py collectstatic --noinput &&
+          python manage.py migrate &&
+          gunicorn --bind 0.0.0.0:8000 config.wsgi:application
+          --access-logfile -
+          --error-logfile -
+          --log-level debug
+          --capture-output
+          --timeout 120"
     # command: bash -lc "python manage.py makemigrations &&
     #                    python manage.py migrate --fake-initial&&
     #                    python manage.py runserver 0.0.0.0:8000"
