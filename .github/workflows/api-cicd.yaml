@@ -93,6 +93,7 @@ jobs:
           ENV_CONTENT=$(cat .env)
           DOCKER_COMPOSE_CONTENT=$(cat docker-compose.yml)
 
+          
           # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           aws ssm send-command \
             --instance-ids "${{ secrets.CICD_EC2_INSTANCE_ID }}" \
@@ -100,8 +101,12 @@ jobs:
             --region ap-northeast-2 \
             --parameters "commands=[
               'mkdir -p /home/ec2-user/stagelog-api',
-              'echo \"$ENV_CONTENT\" > /home/ec2-user/stagelog-api/.env',
-              'echo \"$DOCKER_COMPOSE_CONTENT\" > /home/ec2-user/stagelog-api/docker-compose.yml',
+              'echo \"$ENV_BASE64\" | base64 -d > /home/ec2-user/stagelog-api/.env',
+              'echo \"$DOCKER_COMPOSE_BASE64\" | base64 -d > /home/ec2-user/stagelog-api/docker-compose.yml',
+              
+              # root로 만들어진 소유권을 먼저 변경(폴더와 파일 모두)
+              'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api',
+
               'cd /home/ec2-user/stagelog-api',
               'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
               'docker-compose pull',
