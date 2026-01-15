@@ -89,9 +89,9 @@ jobs:
       #SSM을 이용해서 env파일과 docker-compse.yml 전송 및 컨테이너 실행
       - name: Deploy to Private EC2 via SSM
         run: |
-          # 1. 파일 내용 읽기 (로컬 워크스페이스에 있는 파일들)
-          ENV_CONTENT=$(cat .env)
-          DOCKER_COMPOSE_CONTENT=$(cat docker-compose.yml)
+          # 1. Base64 인코딩 (줄바꿈/특수문자 보호)
+          ENV_BASE64=$(base64 -w 0 .env)
+          DOCKER_COMPOSE_BASE64=$(base64 -w 0 docker-compose.yml)
 
           
           # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
