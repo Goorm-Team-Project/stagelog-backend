@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction, IntegrityError
 
-from common.utils import common_response, login_check
+from common.utils import common_response, login_check, get_optional_user_id
 from events.models import Event
 from .models import Post, Comment, PostReaction, Report, ReactionType
 
@@ -246,13 +246,39 @@ def post_detail(request, post_id: int):
         return post_update(request, post_id)
     if request.method == "DELETE":
         return post_delete(request, post_id)
+
+    # GET: Public + Optional Auth
+    auth_header = request.headers.get("Authorization")
+    user_id = None
+
+    if auth_header:
+        user_id, auth_error = get_optional_user_id(request)
+        if auth_error:
+            return common_response(False, message=auth_error, status=401)
+        if user_id is None:
+            return common_response(False, message="토큰에 user_id가 없습니다.", status=401)
+
     # 조회수 +1 (동시성 안전)
     updated = Post.objects.filter(post_id=post_id).update(views=F("views") + 1)
     if updated == 0:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
     
     p = Post.objects.select_related("user").get(post_id=post_id)
-    return common_response(True, data=_post_detail(p), message="게시글 상세 조회 성공", status=200)
+
+    detail = _post_detail(p)
+
+    # Authorization이 있을 때만 my_reaction 추가
+    if auth_header:
+        r = PostReaction.objects.filter(post_id=post_id, user_id=user_id).first()
+        if r is None:
+            detail["my_reaction"] = None
+        else:
+            detail["my_reaction"] = {
+                "like": r.type ==  ReactionType.LIKE,
+                "dislike": r.type ==ReactionType.DISLIKE,
+            }
+
+    return common_response(True, data=detail, message="게시글 상세 조회 성공", status=200)
 
 
 @csrf_exempt
@@ -271,10 +297,10 @@ def post_update(request, post_id: int):
     if p.user_id != request.user_id:
         return common_response(False, message="수정 권한이 없습니다.", status=403)
 
-    # 부분 수정(PATCH) + bugfix: value가 정의되지 않은 상태(UnboundLocalError)
+    # 부분 수정(PATCH) + bugfix2: value가 정의되지 않은 상태(UnboundLocalError)
     changed = False
     for field in ("category", "title", "content", "image_url"):
-        if field in data:
+        if field not in data:
             continue
 
         value = data.get(field)
