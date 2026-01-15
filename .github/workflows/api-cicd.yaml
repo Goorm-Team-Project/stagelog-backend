@@ -69,9 +69,9 @@ jobs:
           
 
 
-      - name: Get GitHub Action IP
-        id: ip
-        run: echo "ipv4=$(curl -s https://ifconfig.me)" >> $GITHUB_OUTPUT
+      # - name: Get GitHub Action IP
+      #   id: ip
+      #   run: echo "ipv4=$(curl -s https://ifconfig.me)" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,36 +80,61 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Add GitHub IP to Security Group
+      # - name: Add GitHub IP to Security Group
+      #   run: |
+      #     aws ec2 authorize-security-group-ingress \
+      #       --group-id ${{ secrets.AWS_SG_ID }} \
+      #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      
+      #SSM을 이용해서 env파일과 docker-compse.yml 전송 및 컨테이너 실행
+      - name: Deploy to Private EC2 via SSM
         run: |
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${{ secrets.AWS_SG_ID }} \
-            --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+          # 1. 파일 내용 읽기 (로컬 워크스페이스에 있는 파일들)
+          ENV_CONTENT=$(cat .env)
+          DOCKER_COMPOSE_CONTENT=$(cat docker-compose.yml)
 
-      # docker-compose.yml과 관련 설정 폴더를 모두 보냅니다.
-      - name: Copy files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,.env" 
-          target: "~/stagelog-api"
-          strip_components: 0 # 폴더 구조 유지
+          # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
+          aws ssm send-command \
+            --instance-ids "${{ secrets.CICD_EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --region ap-northeast-2 \
+            --parameters "commands=[
+              'mkdir -p ~/stagelog-api',
+              'echo \"$ENV_CONTENT\" > ~/stagelog-api/.env',
+              'echo \"$DOCKER_COMPOSE_CONTENT\" > ~/stagelog-api/docker-compose.yml',
+              'cd ~/stagelog-api',
+              'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
+              'docker-compose pull',
+              'docker-compose up -d',
+              'docker image prune -f'
+            ]"
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e #명령어 실패시 즉시종료
-            cd ~/stagelog-api
-            echo ${{ secrets.DOCKERHUB_TOKEN }} | sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-            sudo docker-compose pull
-            sudo docker-compose up -d
-            sudo docker image prune -f
+      # #docker-compose.yml과 관련 설정 폴더를 모두 보냅니다.
+      # - name: Copy files to EC2
+      #   uses: appleboy/scp-action@v0.1.7
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ec2-user
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     source: "docker-compose.yml,.env" 
+      #     target: "~/stagelog-api"
+      #     strip_components: 0 # 폴더 구조 유지
+
+      
+
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ec2-user
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     script: |
+      #       set -e #명령어 실패시 즉시종료
+      #       cd ~/stagelog-api
+      #       echo ${{ secrets.DOCKERHUB_TOKEN }} | sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      #       sudo docker-compose pull
+      #       sudo docker-compose up -d
+      #       sudo docker image prune -f
 
       - name: Remove GitHub IP
         if: always()
