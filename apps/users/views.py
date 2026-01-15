@@ -295,6 +295,7 @@ def google_login(request):
 def social_login(provider, provider_id, email=None):
     try:        
         user = User.objects.filter(provider=provider, provider_id=provider_id).first()
+        bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
         
         if user:
             jwt_access_token = create_access_token(user.user_id)
@@ -310,7 +311,8 @@ def social_login(provider, provider_id, email=None):
                     "user": {
                         "id": user.user_id,
                         "nickname": user.nickname,
-                        "level": user.level
+                        "level": user.level,
+                        "bookmarks": bookmarked_id
                     }
                 },
                 status=200)
@@ -389,6 +391,10 @@ def signup(request):
             print("singup 호출 토큰 처리 도중 오류가 발생했습니다.")
             traceback.print_exc()
             return common_response(success=False, message="서버 내부 오류", status=500)
+        try:
+            bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
+        except Exception as e:
+            return common_response(success=False, message="서버 내부 오류", status=500)
         
         return common_response(
             success=True,
@@ -399,7 +405,8 @@ def signup(request):
                 "user" : {
                     "id" : user.user_id,
                     "nickname": user.nickname,
-                    "level" : user.level
+                    "level" : user.level,
+                    "bookmarks": bookmarked_id
                 }
             },
             status=201
@@ -528,9 +535,18 @@ def update_user_profile(request):
             message="정보 수정 성공",
             data={
                 "id": user.user_id,
-                # ... (데이터 반환) ...
+                "email": user.email,
                 "nickname": user.nickname,
-                # ...
+                "provider": user.provider,
+                "provider_id": user.provider_id,
+                "created_at": user.created_at,
+                "is_email_sub": user.is_email_sub,
+                "is_events_notification_sub": user.is_events_notification_sub,
+                "is_posts_notification_sub": user.is_posts_notification_sub,
+                "is_admin": user.is_admin,
+                "exp": user.exp,
+                "level": user.level,
+                "reliability_score": user.reliability_score,
                 "bookmarks": bookmarked_id
             },
             status=200
