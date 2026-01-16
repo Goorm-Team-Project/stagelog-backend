@@ -64,7 +64,7 @@ def mypage(request):
                 "start_date": event.start_date.strftime('%Y-%m-%d') if event.start_date else None,
                 "end_date": event.end_date.strftime('%Y-%m-%d') if event.end_date else None,
                 "venue": event.venue,
-                "poster": event.poster.url if event.poster else None
+                "poster": event.poster if event.poster else None
             })
 
         return common_response(
