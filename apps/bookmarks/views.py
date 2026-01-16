@@ -46,9 +46,14 @@ def mypage(request):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('size', 1))
 
-        qs = Event.objects.filter(bookmarks__user_id=request.user_id)\
-                          .annotate(favorite_count=Count('bookmarks'))\
-                          .order_by('-bookmarks__created_at')
+        my_booked_ids = Bookmark.objects.filter(user_id=request.user_id)\
+                                        .order_by('-created_at')\
+                                        .values_list('event_id', flat=True)
+
+        qs = Event.objects.filter(event_id__in=list(my_booked_ids))\
+                          .annotate(favorite_count=Count('bookmarks'))
+
+        qs = qs.order_by('-start_date')
 
         paginator = Paginator(qs, page_size)
 
@@ -58,7 +63,6 @@ def mypage(request):
             current_page_data = []
 
         event_list = []
-        # 이제 루프 변수는 bookmark가 아니라 event 자체가 됩니다.
         for event in current_page_data:
             event_list.append({
                 "event_id": event.event_id, 
