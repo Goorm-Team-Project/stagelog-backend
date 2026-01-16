@@ -3,6 +3,7 @@ name: Django API SERVER CI/CD
 on:
   push:
     branches: [ "develop" ] # 본인의 배포 브랜치명으로 수정
+  workflow_dispatch:
 
 jobs:
   build-and-push:
