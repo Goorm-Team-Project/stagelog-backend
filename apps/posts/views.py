@@ -9,7 +9,11 @@ from django.db import transaction, IntegrityError
 
 from common.utils import common_response, login_check, get_optional_user_id
 from notifications.services import create_notification
+from django.contrib.auth import get_user_model
+from users.services import apply_user_exp, ExpPolicy
 from events.models import Event
+
+User = get_user_model()
 from .models import Post, Comment, PostReaction, Report, ReactionType
 
 # Create your views here.
@@ -236,8 +240,19 @@ def event_posts_create(request, event_id: int):
         image_url=image_url,
     )
 
+    # 게시글 작성 exp 반영 (실패해도, 작성은 성공되도록)
+    exp_result = None
+    try:
+        u = User.objects.get(user_id=request.user_id)
+        exp_result = apply_user_exp(u, ExpPolicy.POST)
+    except Exception:
+        exp_result = None
+
     p = Post.objects.select_related("user").get(post_id=p.post_id)
-    return common_response(True, data=_post_detail(p), message="게시글 작성 성공", status=201)
+    resp = _post_detail(p)
+    if exp_result is not None:
+        resp["exp_result"] = exp_result
+    return common_response(True, data=resp, message="게시글 작성 성공", status=201)
 
 
 @csrf_exempt
@@ -408,8 +423,19 @@ def comment_create(request, post_id: int):
             )
         except Exception:
             pass
+    # 댓글 작성 exp 반영 (실패해도 댓글 작성은 성공하도록)
+    exp_result = None
+    try:
+        u = User.objects.get(user_id=request.user_id)
+        exp_result = apply_user_exp(u, ExpPolicy.COMMENT)
+    except Exception:
+        exp_result = None
 
-    return common_response(True, data=_comment_item(c), message="댓글 작성 성공", status=201)
+    resp = _comment_item(c)
+    if exp_result is not None:
+        resp["exp_result"] = exp_result
+
+    return common_response(True, data=resp, message="댓글 작성 성공", status=201)
 
 
 @csrf_exempt
