@@ -142,3 +142,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # 11. ALB사용 시 리다이렉션 오류 방지
 # ALB가 전달해준 원래 호스트 정보를 신뢰합니다.
 USE_X_FORWARDED_HOST = True
+
+# AWS SES 설정
+EMAIL_BACKEND = 'django_ses.SESBackend'
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID_WOOSUPAR')
+AWS_SECRET_ACCESS_KEY_WOOSUPAR = env('AWS_SECRET_ACCESS_KEY_WOOSUPAR')
+AWS_SES_REGION_NAME = env('AWS_SES_REGION_NAME')
+AWS_SES_REGION_ENDPOINT = 'email.ap-northeast-2.amazonaws.com'
+
+SES_DEFAULT_FROM_EMAIL = env('SES_DEFAULT_FROM_EMAIL')

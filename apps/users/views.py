@@ -2,6 +2,10 @@ import traceback, json, sys, requests
 import os, datetime, jwt, uuid
 from .models import User, RefreshToken
 from django.conf import settings
+from django.core.mail import send_mail
+from django.core.signing import TimestampSigner, SignatureExpired, BadSignature
+from django.urls import reverse
+from django.shortcuts import redirect
 from django.views.decorators.http import require_POST, require_safe, require_http_methods 
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
@@ -383,38 +387,109 @@ def signup(request):
             is_posts_notification_sub=is_posts_notification_sub,
         )
 
-        try:
-            access_token = create_access_token(user.user_id)
-            refresh_token = create_refresh_token(user.user_id)
-            RefreshToken.objects.create(user=user, token=refresh_token)
-        except Exception as e:
-            print("singup 호출 토큰 처리 도중 오류가 발생했습니다.")
-            traceback.print_exc()
-            return common_response(success=False, message="서버 내부 오류", status=500)
-        try:
-            bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
-        except Exception as e:
-            return common_response(success=False, message="서버 내부 오류", status=500)
-        
-        return common_response(
-            success=True,
-            message="가입 완료", 
-            data={
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "user" : {
-                    "id" : user.user_id,
-                    "nickname": user.nickname,
-                    "level" : user.level,
-                    "bookmarks": bookmarked_id
-                }
-            },
-            status=201
+        user.is_active = False
+        user.save()
+
+        signer = TimestampSinger()
+        signed_user_pk = signer.sign(str(user.user_id))
+
+        # 인증 url 생성
+        verification_link = request.build_absolute_uri(
+            reverse('verify_email', kwargs={'token': signed_user_pk})
         )
 
+        subject = f"[Stagelog] {user.nickname}님, 회원가입 인증을 완료해주세요."
+        message = f"""
+        환영합니다, {user.nickname} 님!
+
+        아래 링크를 클릭하여 회원가입을 완료해주세요:
+        {verification_link}
+
+        이 링크는 10분간 유효합니다.
+        """
+
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.SES_DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            # 메일 발송 실패 하면 유저 삭제
+            user.delete()
+            print(f"AWS SES 이메일 발송 실패: {e}")
+            return common_response(success=False, message="인증 메일 발송에 실패했습니다.", status=500)
+
+        return common_response(
+            success=True,
+            message="인증 메일이 발송되었습니다. 이메일을 확인해주세요.",
+            data={"email": user.email},
+            status=200
+        )
     except Exception as e:
         traceback.print_exc()
         return common_response(success=False, message="서버 내부 오류", status=500)
+
+    #     try:
+    #         access_token = create_access_token(user.user_id)
+    #         refresh_token = create_refresh_token(user.user_id)
+    #         RefreshToken.objects.create(user=user, token=refresh_token)
+    #     except Exception as e:
+    #         print("singup 호출 토큰 처리 도중 오류가 발생했습니다.")
+    #         traceback.print_exc()
+    #         return common_response(success=False, message="서버 내부 오류", status=500)
+    #     try:
+    #         bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
+    #     except Exception as e:
+    #         return common_response(success=False, message="서버 내부 오류", status=500)
+        
+    #     return common_response(
+    #         success=True,
+    #         message="가입 완료", 
+    #         data={
+    #             "access_token": access_token,
+    #             "refresh_token": refresh_token,
+    #             "user" : {
+    #                 "id" : user.user_id,
+    #                 "nickname": user.nickname,
+    #                 "level" : user.level,
+    #                 "bookmarks": bookmarked_id
+    #             }
+    #         },
+    #         status=201
+    #     )
+
+    # except Exception as e:
+    #     traceback.print_exc()
+    #     return common_response(success=False, message="서버 내부 오류", status=500)
+
+# 이메일 인증 처리
+@require_safe
+def verify_email(request, token):
+    signer = TimestampSinger()
+    try:
+        # 토큰 서명 확인, 복호화
+        original_value = signer.unsign(token, max_age=600)
+        user_id = int(original_value)
+
+        user = User.objects.get(user_id=user_id)
+
+        if user.is_active:
+            return HttpResponse("이미 인증이 완료된 계정입니다. 로그인해주세요.")
+            #return redirect("http://localhost:3000/login?message=...")
+
+        user.is_active = True
+        user.save()
+
+        return HttpResponse("인증이 완료되었습니다.")
+
+    except (SignatureExpired, BadSignature):
+        return HttpResponse("인증 링크가 만료되었거나 유효하지 않습니다.")
+    except User.DoesNotExist:
+        return HttpResponse("존재하지 않는 사용자입니다.", status=404)
+
 
 # 유지용 함수 /api/auth/keep
 @require_safe
