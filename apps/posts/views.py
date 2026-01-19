@@ -164,6 +164,8 @@ def event_posts_list(request, event_id: int):
         "artist": ev.artist,
         "start_date": ev.start_date.isoformat() if ev.start_date else None,
         "end_date": ev.end_date.isoformat() if ev.end_date else None,
+
+        "group_name:": e.group_name,
     }
 
     category = normalize_category(request.GET.get("category"))
