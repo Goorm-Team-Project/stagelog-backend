@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (kakao_login,
         me, 
-        signup, 
+        signup,
+        verify_email,
         kakao_test_page, 
         kakao_callback_test, 
         get_user_info, 
@@ -22,6 +23,8 @@ urlpatterns = [
     path('login/naver', naver_login, name='naver_login'),
     #회원가입
     path('signup', signup, name='signup'),
+    #이메일 인증
+    path('verify/<str:token>', verify_email, name='verify_email'),
     #마이페이지
     path('me', get_user_info, name='get_user_info'),
     #다른 유저 정보 조회
