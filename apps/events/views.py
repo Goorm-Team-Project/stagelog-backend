@@ -20,7 +20,7 @@ def _event_summary(e: Event) -> dict:
         "venue": e.venue,
         "poster": e.poster,
 
-        "group_name:": e.group_name,
+        "group_name": e.group_name,
 
         # 즐겨찾기 갯수 포함 (없으면 0)
         ## Event 객체에 favorite_coute 속성이 있으면 값을 내리고 없으면 0 내림
@@ -45,7 +45,7 @@ def _event_detail(e: Event) -> dict:
         "host": e.host,
         "genre": e.genre,
         "update_date": e.update_date.isoformat() if e.update_date else None,
-        "group_name:": e.group_name,
+        "group_name": e.group_name,
     }
 
 
