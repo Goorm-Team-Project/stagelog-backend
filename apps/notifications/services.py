@@ -1,16 +1,23 @@
-from notification.models import Notification
-from users.models import User
+# posts 통합을 위한 fetch(260116)
+#추가
+from typing import Optional
+#추가
+from django.contrib.auth import get_user_model
+from notifications.models import Notification
+# 제거: from users.models import User
 from posts.models import Post
-from posts.models import Comment
+# 제거: from posts.models import Comment
 from events.models import Event
+
+User = get_user_model()
 
 def create_notification(
     user: User,
     type: str,
     message: str,
-    relate_url: str = None,
-    post: Post = None,
-    event: Event = None
+    relate_url: Optional[str] = None,
+    post: Optional[Post] = None,
+    event: Optional[Event] = None,
 ):
     """
     user: 알림을 생성할 User 객체
