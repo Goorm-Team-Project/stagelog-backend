@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction, IntegrityError
 
 from common.utils import common_response, login_check, get_optional_user_id
+from notifications.services import create_notification
 from events.models import Event
 from .models import Post, Comment, PostReaction, Report, ReactionType
 
@@ -373,7 +374,9 @@ def post_comments_list(request, post_id: int):
 @login_check
 @require_POST
 def comment_create(request, post_id: int):
-    if not Post.objects.filter(post_id=post_id).exists():
+    try:
+        post = Post.objects.select_related("user", "event").get(post_id=post_id)
+    except Post.DoesNotExist:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
 
     data = _parse_json(request)
@@ -390,8 +393,23 @@ def comment_create(request, post_id: int):
         content=content,
     )
     c = Comment.objects.select_related("user").get(comment_id=c.comment_id)
-    return common_response(True, data=_comment_item(c), message="댓글 작성 성공", status=201)
 
+    # 댓글 작성 성공 후: 게시글 작성자에게 알림 (자기 글에 자기 댓글은 제외)
+    if post.user_id != request.user_id:
+        # create_notification 내부에서도 try/except 처리+호출도 안전하게 유지
+        try:
+            create_notification(
+                user=post.user,
+                type="comment",
+                message="회원님의 게시글에 새로운 댓글이 달렸어요.",
+                relate_url=f"/posts/{post.post_id}#comment-{c.comment_id}",
+                post=post,
+                event=getattr(post, "event", None),
+            )
+        except Exception:
+            pass
+
+    return common_response(True, data=_comment_item(c), message="댓글 작성 성공", status=201)
 
 
 @csrf_exempt
@@ -442,9 +460,13 @@ def post_dislike(request, post_id: int):
 
 def _toggle_reaction(request, post_id: int, target_type: str):
     try:
+        # author_id는 트랜잭션 안에서 확보 (알림 조건 판단용)
+        author_id = None
+
         with transaction.atomic():
             # 게시글 row lock (카운트 정합성)
             p = Post.objects.select_for_update().get(post_id=post_id)
+            author_id = p.user_id
 
             r = PostReaction.objects.select_for_update().filter(
                 post_id=post_id, user_id=request.user_id
@@ -494,12 +516,31 @@ def _toggle_reaction(request, post_id: int, target_type: str):
             "like": p2.like_count,
             "dislike": p2.dislike_count,
         }
+
+        # 리액션 성공 후: 게시글 작성자에게 알림 (자기 글에 자기 반응 제외)
+        if author_id is not None and author_id != request.user_id and new_state in (ReactionType.LIKE, ReactionType.DISLIKE):
+            try:
+                post_obj = Post.objects.select_related("user", "event").get(post_id=post_id)
+
+                noti_type = "post_like" if new_state == ReactionType.LIKE else "post_dislike"
+                noti_msg = "회원님의 게시글에 👍 좋아요가 눌렸어요." if new_state == ReactionType.LIKE else "회원님의 게시글에 👎 싫어요가 눌렸어요."
+
+                create_notification(
+                    user=post_obj.user,
+                    type=noti_type,
+                    message=noti_msg,
+                    relate_url=f"/posts/{post_obj.post_id}",
+                    post=post_obj,
+                    event=getattr(post_obj, "event", None),
+                )
+            except Exception:
+                pass
+
         return common_response(True, data=data, message="리액션 처리 성공", status=200)
 
     except Post.DoesNotExist:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
     except IntegrityError:
-        # 유니크 충돌 등 예외 케이스
         return common_response(False, message="리액션 처리 중 충돌이 발생했습니다.", status=409)
 
 
