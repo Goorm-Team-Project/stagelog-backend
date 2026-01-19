@@ -301,6 +301,9 @@ def social_login(provider, provider_id, email=None):
         user = User.objects.filter(provider=provider, provider_id=provider_id).first()
         
         if user:
+            if not is_active:
+                return common_response(False, message="이메일 인증이 완료되지 않았습니다.", status=400)
+            
             jwt_access_token = create_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
 
@@ -483,10 +486,12 @@ def verify_email(request, token):
         user.is_active = True
         user.save()
 
-        return HttpResponse("인증이 완료되었습니다.")
+        #return HttpResponse("인증이 완료되었습니다.")
+        return redirect("http://pearlinvest.click/login?verified=true")
 
     except (SignatureExpired, BadSignature):
-        return HttpResponse("인증 링크가 만료되었거나 유효하지 않습니다.")
+        #return HttpResponse("인증 링크가 만료되었거나 유효하지 않습니다.")
+        return redirect("http://pearlinvest.click/login?verified=false")
     except User.DoesNotExist:
         return HttpResponse("존재하지 않는 사용자입니다.", status=404)
 
