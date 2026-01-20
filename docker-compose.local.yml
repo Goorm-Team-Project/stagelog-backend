@@ -1,0 +1,14 @@
+# 로컬 개발 전용 - DB 없이 makemigrations만 할 때
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: stagelog-api-local
+    env_file:
+      - .env.local
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app  # 코드 변경 즉시 반영
+    command: bash -c "echo 'Local dev container ready' && tail -f /dev/null"
