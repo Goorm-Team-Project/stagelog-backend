@@ -13,11 +13,18 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
+db_mode = env('DB_MODE', default='sqlite')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
 KAKAO_REDIRECT_URI = env('KAKAO_REDIRECT_URI')
 KAKAO_ACCESS_TOKEN_CLIENT_SECRET = env('KAKAO_ACCESS_TOKEN_CLIENT_SECRET')
+NAVER_REST_API_KEY = env('NAVER_REST_API_KEY')
+NAVER_REDIRECT_URI = env('NAVER_REDIRECT_URI')
+NAVER_ACCESS_TOKEN_CLIENT_SECRET = env('NAVER_ACCESS_TOKEN_CLIENT_SECRET')
+GOOGLE_REST_API_KEY = env('GOOGLE_REST_API_KEY')
+GOOGLE_ACCESS_TOKEN_CLIENT_SECRET = env('GOOGLE_ACCESS_TOKEN_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
 
 # 2. 앱 설정 (DRF, SimpleJWT 제거)
 INSTALLED_APPS = [
@@ -37,12 +44,12 @@ INSTALLED_APPS = [
     'posts',
     'bookmarks',
     'notifications',
-    'uploads',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # 최상단
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -70,9 +77,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # 3. 데이터베이스 (MariaDB)
-DATABASES = {
-    'default': env.db(),
-}
+if db_mode == 'sqlite':
+    DATABASES = {
+        'default' : {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'stagelog',
+            'USER': 'admin',
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', ''),
+            'PORT': '3306',
+            'OPTIONS': {
+                'ssl': {
+                    'ca': None,#os.path.join(BASE_DIR, 'certs/global-bundle.pem'),
+                },
+                'ssl_mode': 'REQUIRED',
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+
 
 # 4. 커스텀 유저 모델
 AUTH_USER_MODEL = 'users.User' 
@@ -106,17 +136,9 @@ if not DEBUG:
 JWT_ALGORITHM = 'HS256'
 JWT_EXP_DELTA_SECONDS = env.int('JWT_EXP_DELTA_SECONDS', default= 60 * 30)
 
-# 10. AWS S3 (Presigned Upload)
-AWS_REGION = env("AWS_REGION", default=env("AWS_DEFAULT_REGION", default="ap-northeast-2"))
+# 10. 정적파일경로설정
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# 10-1. bucket 키는 여러 이름 fallback 지원
-S3_UPLOAD_BUCKET = env(
-    "S3_UPLOAD_BUCKET",
-    default=env("AWS_STORAGE_BUCKET_NAME", default=env("S3_BUCKET", default="")),
-)
-
-S3_UPLOAD_PREFIX = env("S3_UPLOAD_PREFIX", default="uploads/")
-S3_PRESIGN_EXPIRES = env.int("S3_PRESIGN_EXPIRES", default=300)
-
-# <-- (추후 커스텀 도메인/CloudFront 대응용, 여기에 base URL 지정) -->
-# S3_PUBLIC_BASE_URL = env("S3_PUBLIC_BASE_URL", default=None)
+# 11. ALB사용 시 리다이렉션 오류 방지
+# ALB가 전달해준 원래 호스트 정보를 신뢰합니다.
+USE_X_FORWARDED_HOST = True
