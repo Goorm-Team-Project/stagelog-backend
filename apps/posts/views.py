@@ -66,6 +66,7 @@ def _post_detail(p: Post) -> dict:
     return {
         **_post_summary(p),
         "content": p.content,
+        "image_url": p.image_url,  # null 가능
     }
 
 def _comment_item(c: Comment) -> dict:

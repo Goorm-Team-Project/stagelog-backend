@@ -20,6 +20,7 @@ from django.urls import path, include
 from events import views as events_views
 from posts import views as posts_views
 from notifications import views as notifications_views
+from uploads import views as uploads_views
 from common.utils import health_check
 
 urlpatterns = [
@@ -50,5 +51,7 @@ urlpatterns = [
     path('api/notifications', notifications_views.get_notification_list, name='get_notification_list'),
     path('api/notifications/', include('notifications.urls')),
 
-    path('', health_check)
+    path('', health_check),
+
+    path("api/uploads/presign", uploads_views.presign_upload, name="presign_upload"),
 ]
