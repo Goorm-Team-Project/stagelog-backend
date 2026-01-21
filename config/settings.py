@@ -143,19 +143,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # ALB가 전달해준 원래 호스트 정보를 신뢰합니다.
 USE_X_FORWARDED_HOST = True
 
-# AWS SES 설정
-EMAIL_BACKEND = 'django_ses.SESBackend'
-AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID_WOOSUPAR')
-AWS_SECRET_ACCESS_KEY_WOOSUPAR = env('AWS_SECRET_ACCESS_KEY_WOOSUPAR')
-AWS_SES_REGION_NAME = env('AWS_SES_REGION_NAME')
-AWS_SES_REGION_ENDPOINT = 'email.ap-northeast-2.amazonaws.com'
 
-SES_DEFAULT_FROM_EMAIL = env('SES_DEFAULT_FROM_EMAIL')
-
-# 10. AWS S3 (Presigned Upload)
+# 12. AWS S3 (Presigned Upload)
 AWS_REGION = env("AWS_REGION", default=env("AWS_DEFAULT_REGION", default="ap-northeast-2"))
 
-# 10-1. bucket 키는 여러 이름 fallback 지원
+# 12-1. bucket 키는 여러 이름 fallback 지원
 S3_UPLOAD_BUCKET = env(
     "S3_UPLOAD_BUCKET",
     default=env("AWS_STORAGE_BUCKET_NAME", default=env("S3_BUCKET", default="")),
