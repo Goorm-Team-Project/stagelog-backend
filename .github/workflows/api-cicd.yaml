@@ -68,6 +68,11 @@ jobs:
           
           echo "JWT_EXP_DELTA_SECONDS=${{ secrets.JWT_EXP_DELTA_SECONDS }}" >> .env
           echo "API_PORT=${{ secrets.API_PORT }}" >> .env
+
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
+          echo "S3_UPLOAD_BUCKET=${{ secrets.S3_UPLOAD_BUCKET }}" >> .env          
+          echo "S3_UPLOAD_PREFIX=${{ secrets.S3_UPLOAD_PREFIX }}" >> .env
+          echo "S3_PRESIGN_EXPIRES=${{ secrets.S3_PRESIGN_EXPIRES }}" >> .env
           
 
 
