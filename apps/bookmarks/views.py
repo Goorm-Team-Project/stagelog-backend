@@ -7,6 +7,7 @@ from events.models import Event
 from bookmarks.models import Bookmark
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage
+from django.db.models import Count
 
 User = get_user_model()
 
@@ -45,9 +46,16 @@ def mypage(request):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('size', 1))
 
-        bookmarks = Bookmark.objects.filter(user_id=request.user_id).select_related('event').order_by('-created_at')
+        my_booked_ids = Bookmark.objects.filter(user_id=request.user_id)\
+                                        .order_by('-created_at')\
+                                        .values_list('event_id', flat=True)
 
-        paginator = Paginator(bookmarks, page_size)
+        qs = Event.objects.filter(event_id__in=list(my_booked_ids))\
+                          .annotate(favorite_count=Count('bookmarks'))
+
+        qs = qs.order_by('-start_date')
+
+        paginator = Paginator(qs, page_size)
 
         try:
             current_page_data = paginator.page(page)
@@ -55,8 +63,7 @@ def mypage(request):
             current_page_data = []
 
         event_list = []
-        for bookmark in current_page_data:
-            event = bookmark.event
+        for event in current_page_data:
             event_list.append({
                 "event_id": event.event_id, 
                 "title": event.title,
@@ -64,7 +71,8 @@ def mypage(request):
                 "start_date": event.start_date.strftime('%Y-%m-%d') if event.start_date else None,
                 "end_date": event.end_date.strftime('%Y-%m-%d') if event.end_date else None,
                 "venue": event.venue,
-                "poster": event.poster.url if event.poster else None
+                "poster": event.poster if event.poster else None,
+                "favorite_count": event.favorite_count 
             })
 
         return common_response(
@@ -72,7 +80,7 @@ def mypage(request):
             message="즐겨찾기 목록 조회 성공",
             data={
                 "events": event_list,
-                "has_next": current_page_data.has_next(),
+                "has_next": current_page_data.has_next() if hasattr(current_page_data, 'has_next') else False,
                 "total_count": paginator.count,
                 "total_pages": paginator.num_pages,
             },
@@ -80,6 +88,6 @@ def mypage(request):
         )
         
     except Exception as e:
-        print(f"[ERROR] mypage: {e}") # 디버깅용 로그 추가
+        print(f"[ERROR] mypage: {e}") 
         return common_response(success=False, message="서버 에러", status=500)
     

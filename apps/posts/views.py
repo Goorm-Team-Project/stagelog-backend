@@ -7,8 +7,13 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction, IntegrityError
 
-from common.utils import common_response, login_check
+from common.utils import common_response, login_check, get_optional_user_id
+from notifications.services import create_notification
+from django.contrib.auth import get_user_model
+from users.services import apply_user_exp, ExpPolicy
 from events.models import Event
+
+User = get_user_model()
 from .models import Post, Comment, PostReaction, Report, ReactionType
 
 # Create your views here.
@@ -61,6 +66,7 @@ def _post_detail(p: Post) -> dict:
     return {
         **_post_summary(p),
         "content": p.content,
+        "image_url": p.image_url,  # null 가능
     }
 
 def _comment_item(c: Comment) -> dict:
@@ -145,6 +151,24 @@ def event_posts_list(request, event_id: int):
 
     if request.method == "POST":
         return event_posts_create(request, event_id)
+
+    # GET: 공연 존재 확인 + 상단 공연 메타 구성(게시글 0개여도 반환)
+    try:
+        ev = Event.objects.get(event_id=event_id)
+    except Event.DoesNotExist:
+        return common_response(False, message="존재하지 않는 공연입니다.", status=404)
+
+    event_meta = {
+        "event_id": ev.event_id,
+        "title": ev.title,
+        "poster": ev.poster,
+        "artist": ev.artist,
+        "start_date": ev.start_date.isoformat() if ev.start_date else None,
+        "end_date": ev.end_date.isoformat() if ev.end_date else None,
+
+        "group_name": ev.group_name,
+    }
+
     category = normalize_category(request.GET.get("category"))
     search = (request.GET.get("search") or "").strip()
     sort  = (request.GET.get("sort") or "latest").strip().lower()
@@ -178,7 +202,7 @@ def event_posts_list(request, event_id: int):
     page_obj = paginator.get_page(page)
 
     data = {
-        "event_id": str(event_id),
+        "event": event_meta,
         "posts": [_post_summary(p) for p in page_obj.object_list],
         "total_count": paginator.count,
         "total_pages": paginator.num_pages,
@@ -219,8 +243,19 @@ def event_posts_create(request, event_id: int):
         image_url=image_url,
     )
 
+    # 게시글 작성 exp 반영 (실패해도, 작성은 성공되도록)
+    exp_result = None
+    try:
+        u = User.objects.get(user_id=request.user_id)
+        exp_result = apply_user_exp(u, ExpPolicy.POST)
+    except Exception:
+        exp_result = None
+
     p = Post.objects.select_related("user").get(post_id=p.post_id)
-    return common_response(True, data=_post_detail(p), message="게시글 작성 성공", status=201)
+    resp = _post_detail(p)
+    if exp_result is not None:
+        resp["exp_result"] = exp_result
+    return common_response(True, data=resp, message="게시글 작성 성공", status=201)
 
 
 @csrf_exempt
@@ -230,13 +265,39 @@ def post_detail(request, post_id: int):
         return post_update(request, post_id)
     if request.method == "DELETE":
         return post_delete(request, post_id)
+
+    # GET: Public + Optional Auth
+    auth_header = request.headers.get("Authorization")
+    user_id = None
+
+    if auth_header:
+        user_id, auth_error = get_optional_user_id(request)
+        if auth_error:
+            return common_response(False, message=auth_error, status=401)
+        if user_id is None:
+            return common_response(False, message="토큰에 user_id가 없습니다.", status=401)
+
     # 조회수 +1 (동시성 안전)
     updated = Post.objects.filter(post_id=post_id).update(views=F("views") + 1)
     if updated == 0:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
     
     p = Post.objects.select_related("user").get(post_id=post_id)
-    return common_response(True, data=_post_detail(p), message="게시글 상세 조회 성공", status=200)
+
+    detail = _post_detail(p)
+
+    # Authorization이 있을 때만 my_reaction 추가
+    if auth_header:
+        r = PostReaction.objects.filter(post_id=post_id, user_id=user_id).first()
+        if r is None:
+            detail["my_reaction"] = None
+        else:
+            detail["my_reaction"] = {
+                "like": r.type ==  ReactionType.LIKE,
+                "dislike": r.type ==ReactionType.DISLIKE,
+            }
+
+    return common_response(True, data=detail, message="게시글 상세 조회 성공", status=200)
 
 
 @csrf_exempt
@@ -255,11 +316,13 @@ def post_update(request, post_id: int):
     if p.user_id != request.user_id:
         return common_response(False, message="수정 권한이 없습니다.", status=403)
 
-    # 부분 수정(PATCH)
+    # 부분 수정(PATCH) + bugfix2: value가 정의되지 않은 상태(UnboundLocalError)
     changed = False
     for field in ("category", "title", "content", "image_url"):
-        if field in data:
-            value = data.get(field)
+        if field not in data:
+            continue
+
+        value = data.get(field)
         
         if field == "category":
             value = normalize_category(value)
@@ -269,8 +332,8 @@ def post_update(request, post_id: int):
             if isinstance(value, str):
                 value = value.strip()
 
-            setattr(p, field, value)
-            changed = True
+        setattr(p, field, value)
+        changed = True
 
     if not changed:
         return common_response(False, message="수정할 필드가 없습니다.", status=400)
@@ -329,7 +392,9 @@ def post_comments_list(request, post_id: int):
 @login_check
 @require_POST
 def comment_create(request, post_id: int):
-    if not Post.objects.filter(post_id=post_id).exists():
+    try:
+        post = Post.objects.select_related("user", "event").get(post_id=post_id)
+    except Post.DoesNotExist:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
 
     data = _parse_json(request)
@@ -346,8 +411,34 @@ def comment_create(request, post_id: int):
         content=content,
     )
     c = Comment.objects.select_related("user").get(comment_id=c.comment_id)
-    return common_response(True, data=_comment_item(c), message="댓글 작성 성공", status=201)
 
+    # 댓글 작성 성공 후: 게시글 작성자에게 알림 (자기 글에 자기 댓글은 제외)
+    if post.user_id != request.user_id:
+        # create_notification 내부에서도 try/except 처리+호출도 안전하게 유지
+        try:
+            create_notification(
+                user=post.user,
+                type="comment",
+                message="회원님의 게시글에 새로운 댓글이 달렸어요.",
+                relate_url=f"/posts/{post.post_id}#comment-{c.comment_id}",
+                post=post,
+                event=getattr(post, "event", None),
+            )
+        except Exception:
+            pass
+    # 댓글 작성 exp 반영 (실패해도 댓글 작성은 성공하도록)
+    exp_result = None
+    try:
+        u = User.objects.get(user_id=request.user_id)
+        exp_result = apply_user_exp(u, ExpPolicy.COMMENT)
+    except Exception:
+        exp_result = None
+
+    resp = _comment_item(c)
+    if exp_result is not None:
+        resp["exp_result"] = exp_result
+
+    return common_response(True, data=resp, message="댓글 작성 성공", status=201)
 
 
 @csrf_exempt
@@ -398,9 +489,13 @@ def post_dislike(request, post_id: int):
 
 def _toggle_reaction(request, post_id: int, target_type: str):
     try:
+        # author_id는 트랜잭션 안에서 확보 (알림 조건 판단용)
+        author_id = None
+
         with transaction.atomic():
             # 게시글 row lock (카운트 정합성)
             p = Post.objects.select_for_update().get(post_id=post_id)
+            author_id = p.user_id
 
             r = PostReaction.objects.select_for_update().filter(
                 post_id=post_id, user_id=request.user_id
@@ -450,12 +545,31 @@ def _toggle_reaction(request, post_id: int, target_type: str):
             "like": p2.like_count,
             "dislike": p2.dislike_count,
         }
+
+        # 리액션 성공 후: 게시글 작성자에게 알림 (자기 글에 자기 반응 제외)
+        if author_id is not None and author_id != request.user_id and new_state in (ReactionType.LIKE, ReactionType.DISLIKE):
+            try:
+                post_obj = Post.objects.select_related("user", "event").get(post_id=post_id)
+
+                noti_type = "post_like" if new_state == ReactionType.LIKE else "post_dislike"
+                noti_msg = "회원님의 게시글에 👍 좋아요가 눌렸어요." if new_state == ReactionType.LIKE else "회원님의 게시글에 👎 싫어요가 눌렸어요."
+
+                create_notification(
+                    user=post_obj.user,
+                    type=noti_type,
+                    message=noti_msg,
+                    relate_url=f"/posts/{post_obj.post_id}",
+                    post=post_obj,
+                    event=getattr(post_obj, "event", None),
+                )
+            except Exception:
+                pass
+
         return common_response(True, data=data, message="리액션 처리 성공", status=200)
 
     except Post.DoesNotExist:
         return common_response(False, message="존재하지 않는 게시글입니다.", status=404)
     except IntegrityError:
-        # 유니크 충돌 등 예외 케이스
         return common_response(False, message="리액션 처리 중 충돌이 발생했습니다.", status=409)
 
 

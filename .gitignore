@@ -1,5 +1,6 @@
 # 가상 환경
 .venv/
+venv/
 
 # 파이썬 관련 파일
 __pycache__/
@@ -13,3 +14,6 @@ db.sqlite3
 
 # 인증서
 certs/
+
+# docker compose for local
+docker-compose.override.yml

@@ -13,7 +13,8 @@ def _notification_summary(n: Notification) -> dict:
         "is_read": n.is_read,
         "created_at": n.created_at.isoformat(),
         "post_id": n.post_id if n.post_id else None,
-        "event_id": n.event_id if n.event_id else None
+        "event_id": n.event_id if n.event_id else None,
+        "relate_url": n.relate_url if n.relate_url else None
     }
 
 @require_safe

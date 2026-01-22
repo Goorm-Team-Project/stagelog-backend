@@ -1,27 +1,12 @@
 import jwt
 import datetime
 import functools
-import math
 
 from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 
 def health_check(request):
     return HttpResponse("OK", status=200)
-
-def user_exp_calculator(base_exp, user_level, decay_factor=0.1):
-    """
-    base_exp : 활동으로 획득하는 점수(글쓰기, 댓글 ...)
-    user_level : 현재 유저의 레벨
-    decay_factor : 경험치 획득 감소 계수
-    """
-    if user_level < 1:
-        user_level = 1
-    
-    multiplier = 1 / (1 + (decay_factor * (user_level - 1)))
-    exp = base_exp * multiplier
-
-    return max(1, round(final_xp))
 
 def common_response(success=True, data=None, message="", status=200):
     """
@@ -119,3 +104,29 @@ def login_check(func):
         return func(request, *args, **kwargs)
     
     return wrapper
+
+# Optional Auth 헬퍼 추가
+def get_optional_user_id(request):
+    """
+    Authorization 헤더가 없으면 (None, None) 반환 -> Public 유지
+    Authorization 헤더가 있으면 토큰 검증:
+      - 유효: (user_id, None)
+      - 무효/형식오류: (None, error_msg)  -> 호출부에서 401 처리
+    """
+    auth = request.headers.get("Authorization")
+    if not auth:
+        return None, None
+
+    if not auth.startswith("Bearer "):
+        return None, "토큰 형식이 잘못되었습니다. (Bearer 토큰)"
+
+    token = auth.split(" ", 1)[1].strip()
+    decoded = validate_token(token)
+    if decoded is None:
+        return None, "유효하지 않거나 만료된 토큰입니다."
+
+    user_id = decoded.get("user_id")
+    if not user_id:
+        return None, "토큰에 user_id가 없습니다."
+
+    return user_id, None

@@ -295,13 +295,13 @@ def google_login(request):
 def social_login(provider, provider_id, email=None):
     try:        
         user = User.objects.filter(provider=provider, provider_id=provider_id).first()
-        bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
         
         if user:
             jwt_access_token = create_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
 
             RefreshToken.objects.create(user=user, token=refresh_token)
+            bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
             return common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
@@ -416,11 +416,13 @@ def signup(request):
         traceback.print_exc()
         return common_response(success=False, message="서버 내부 오류", status=500)
 
+# 유지용 함수 /api/auth/keep
 @require_safe
 @login_check
 def me(request):
     try:
         user = User.objects.get(user_id=request.user_id)
+        bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
 
         return common_response(
             success=True,
@@ -429,7 +431,8 @@ def me(request):
                 "user": {
                     "id": user.user_id,
                     "nickname": user.nickname,
-                    "level": user.level
+                    "level": user.level,
+                    "bookmarks": bookmarked_id
                 }
             },
             status=200

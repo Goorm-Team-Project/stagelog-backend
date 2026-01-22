@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# 운영환경을 위해 소스 코드 전체를 이미지 안에 넣기
+COPY . /app/
+
 # 소스는 volume mount로 개발(빠른 빌드). 운영에서는 COPY 방식으로 변경
 EXPOSE 8000
 
