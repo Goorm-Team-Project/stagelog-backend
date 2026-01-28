@@ -372,6 +372,8 @@ def signup(request):
 
         if User.objects.filter(email=input_email).exists():
             return common_response(success=False, message="이미 가입된 이메일입니다.", status=409)
+        if User.objects.filter(nickname=input_nickname).exists():
+            return common_response(success=False, message="이미 존재하는 닉네임입니다.", status=409)
 
         user = User.objects.create_user(
             email=input_email,
