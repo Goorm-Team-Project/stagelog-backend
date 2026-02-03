@@ -1,8 +1,8 @@
 name: Django API SERVER CI/CD TERRAFORM
 
 on:
-  # push:
-  #   branches: [ "develop" ] # 본인의 배포 브랜치명으로 수정
+  push:
+  branches: [ "feature/cicd_terraform" ] # 본인의 배포 브랜치명으로 수정
   workflow_dispatch:
 
 jobs:
@@ -32,11 +32,9 @@ jobs:
   #         tags: |
   #           ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:api
   #           ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:api-${{ steps.current-time.outputs.formattedTime }}
-
   deploy:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
       
