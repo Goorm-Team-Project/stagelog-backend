@@ -34,7 +34,6 @@ jobs:
   #           ${{ secrets.DOCKERHUB_USERNAME }}/stagelog-repo:api-${{ steps.current-time.outputs.formattedTime }}
 
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
 
