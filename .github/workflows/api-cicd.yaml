@@ -108,7 +108,21 @@ jobs:
           fi
           
           # 2. SSM 연결 확인
-          aws ssm wait instance-online --instance-ids "$INSTANCE_ID"
+          echo "SSM Online 상태 확인 중..."
+          while true; do
+            STATUS=$(aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+            --query "InstanceInformationList[0].PingStatus" \
+            --output text)
+
+            if [ "$STATUS" == "Online" ]; then
+              echo "SSM Agent Online 확인 완료!"
+              break
+            fi
+
+            echo " 대기 중... (10초 후 재시도)"
+            sleep 10
+          done
           
           # 3. Base64 인코딩 (줄바꿈/특수문자 보호)
           ENV_BASE64=$(base64 -w 0 .env)
@@ -167,6 +181,7 @@ jobs:
       #       --group-id ${{ secrets.AWS_SG_ID }} \
 
       #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
 
 
 
