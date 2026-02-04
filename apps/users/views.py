@@ -512,6 +512,7 @@ def get_other_user_info(request, user_id):
 @csrf_exempt
 @require_http_methods(["PATCH"])
 @login_check
+@transaction.atomic
 def update_user_profile(request):
     try:
         user_id = request.user_id
