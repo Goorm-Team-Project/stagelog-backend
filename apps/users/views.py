@@ -340,6 +340,7 @@ def social_login(provider, provider_id, email=None):
 
 @csrf_exempt
 @require_POST # 회원가입도 POST
+@transaction.atomic
 def signup(request):
     try:
         try:
