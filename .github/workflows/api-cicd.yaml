@@ -47,9 +47,9 @@ jobs:
           echo "DEBUG=${{ secrets.DEBUG }}" >> .env
           echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
 
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL_MANAGED }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+          echo "DB_HOST=${{ secrets.DB_HOST_MANAGED }}" >> .env
           echo "DB_MODE=${{ secrets.DB_MODE }}" >> .env
 
           echo "KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}" >> .env
@@ -104,7 +104,7 @@ jobs:
           # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           # 'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api' ssm으로 만들어진 폴더의 권한 변경
           aws ssm send-command \
-            --instance-ids "${{ secrets.CICD_EC2_INSTANCE_ID }}" \
+            --targets "Key=tag:Name,Values=stagelog-ec2-backend" \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
