@@ -5,6 +5,7 @@ from django.conf import settings
 from django.views.decorators.http import require_POST, require_safe, require_http_methods 
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from apps.common.utils import (
     create_access_token, 
     create_refresh_token,
@@ -375,15 +376,18 @@ def signup(request):
         if User.objects.filter(nickname=input_nickname).exists():
             return common_response(success=False, message="이미 존재하는 닉네임입니다.", status=409)
 
-        user = User.objects.create_user(
-            email=input_email,
-            nickname=input_nickname,
-            provider=provider,
-            provider_id=provider_id,
-            is_email_sub=is_email_sub,
-            is_events_notification_sub=is_events_notification_sub,
-            is_posts_notification_sub=is_posts_notification_sub,
-        )
+        try:
+            user = User.objects.create_user(
+                email=input_email,
+                nickname=input_nickname,
+                provider=provider,
+                provider_id=provider_id,
+                is_email_sub=is_email_sub,
+                is_events_notification_sub=is_events_notification_sub,
+                is_posts_notification_sub=is_posts_notification_sub,
+            )
+        except IntegrityError:
+            return common_response(success=False, message="이미 존재하는 닉네임 혹은 이메일입니다.", status=409)
 
         try:
             access_token = create_access_token(user.user_id)
@@ -532,7 +536,10 @@ def update_user_profile(request):
         if 'is_posts_notification_sub' in body:
             user.is_posts_notification_sub = body['is_posts_notification_sub']
 
-        user.save()
+        try:
+            user.save()
+        except IntegrityError:
+            return common_response(False, message="이미 존재하는 닉네임입니다.", status=409)
         bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
 
         return common_response(
