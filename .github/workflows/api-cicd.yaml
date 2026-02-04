@@ -118,7 +118,7 @@ jobs:
           # 4. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           # 'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api' ssm으로 만들어진 폴더의 권한 변경
           aws ssm send-command \
-            --targets "Key=tag:Name,Values=stagelog-ec2-backend" \
+            --instance-ids $INSTANCE_ID \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
@@ -167,3 +167,4 @@ jobs:
       #       --group-id ${{ secrets.AWS_SG_ID }} \
 
       #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
