@@ -64,7 +64,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # --- [ERD 기반 필드] ---
 
     email = models.EmailField(unique=True, max_length=255)
-    nickname = models.CharField(max_length=30)
+    nickname = models.CharField(max_length=30, unique=True)
     
     # OAuth 관련
     provider = models.CharField(max_length=255)

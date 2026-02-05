@@ -5,6 +5,7 @@ from django.conf import settings
 from django.views.decorators.http import require_POST, require_safe, require_http_methods 
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from apps.common.utils import (
     create_access_token, 
     create_refresh_token,
@@ -302,12 +303,12 @@ def social_login(provider, provider_id, email=None):
 
             RefreshToken.objects.create(user=user, token=refresh_token)
             bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
-            return common_response(
+
+            response = common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
                 data={
                     "access_token": jwt_access_token,
-                    "refresh_token": refresh_token,
                     "user": {
                         "id": user.user_id,
                         "nickname": user.nickname,
@@ -316,6 +317,16 @@ def social_login(provider, provider_id, email=None):
                     }
                 },
                 status=200)
+
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                samesite='Lax',
+                secure=False, #Http, Https를 사용하려면 True로 변경
+                max_age=60 * 60 * 24 * 14 # 2주
+            )
+            return response
         
         else:
             email = None # 카카오 비즈앱 아니면 이메일 못 가져올 수 있음
@@ -339,6 +350,7 @@ def social_login(provider, provider_id, email=None):
 
 @csrf_exempt
 @require_POST # 회원가입도 POST
+@transaction.atomic
 def signup(request):
     try:
         try:
@@ -375,15 +387,18 @@ def signup(request):
         if User.objects.filter(nickname=input_nickname).exists():
             return common_response(success=False, message="이미 존재하는 닉네임입니다.", status=409)
 
-        user = User.objects.create_user(
-            email=input_email,
-            nickname=input_nickname,
-            provider=provider,
-            provider_id=provider_id,
-            is_email_sub=is_email_sub,
-            is_events_notification_sub=is_events_notification_sub,
-            is_posts_notification_sub=is_posts_notification_sub,
-        )
+        try:
+            user = User.objects.create_user(
+                email=input_email,
+                nickname=input_nickname,
+                provider=provider,
+                provider_id=provider_id,
+                is_email_sub=is_email_sub,
+                is_events_notification_sub=is_events_notification_sub,
+                is_posts_notification_sub=is_posts_notification_sub,
+            )
+        except IntegrityError:
+            return common_response(success=False, message="이미 존재하는 닉네임 혹은 이메일입니다.", status=409)
 
         try:
             access_token = create_access_token(user.user_id)
@@ -398,12 +413,11 @@ def signup(request):
         except Exception as e:
             return common_response(success=False, message="서버 내부 오류", status=500)
         
-        return common_response(
+        response = common_response(
             success=True,
             message="가입 완료", 
             data={
                 "access_token": access_token,
-                "refresh_token": refresh_token,
                 "user" : {
                     "id" : user.user_id,
                     "nickname": user.nickname,
@@ -413,6 +427,17 @@ def signup(request):
             },
             status=201
         )
+
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            samesite='Lax',
+            secure=False,
+            max_age=60 * 60 * 24 * 14
+        )
+        
+        return response
 
     except Exception as e:
         traceback.print_exc()
@@ -507,6 +532,7 @@ def get_other_user_info(request, user_id):
 @csrf_exempt
 @require_http_methods(["PATCH"])
 @login_check
+@transaction.atomic
 def update_user_profile(request):
     try:
         user_id = request.user_id
@@ -532,7 +558,10 @@ def update_user_profile(request):
         if 'is_posts_notification_sub' in body:
             user.is_posts_notification_sub = body['is_posts_notification_sub']
 
-        user.save()
+        try:
+            user.save()
+        except IntegrityError:
+            return common_response(False, message="이미 존재하는 닉네임입니다.", status=409)
         bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
 
         return common_response(
@@ -565,14 +594,12 @@ def update_user_profile(request):
 @require_POST
 def refresh_token_check(request):
     try:
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return common_response(success=False, message="잘못된 JSON 형식", status=400)
-
-        client_refresh_token = data.get('refresh_token')
+        # try:
+        #     data = json.loads(request.body)
+        # except json.JSONDecodeError:
+        #     return common_response(success=False, message="잘못된 JSON 형식", status=400)
+        client_refresh_token = request.COOKIES.get('refresh_token')
         
-
         if not client_refresh_token:
             return common_response(success=False, message="토큰이 없습니다.", status=400)
 
@@ -610,8 +637,9 @@ def refresh_token_check(request):
 @login_check
 def logout(request):
     try:
-        data = json.loads(request.body)
-        delete_target_token = data.get('refresh_token')
+        # data = json.loads(request.body)
+        # delete_target_token = data.get('refresh_token')
+        delete_target_token = request.COOKIES.get('refresh_token')
 
         if not delete_target_token:
             return common_response(success=False, message="삭제할 토큰이 없습니다.", status=400)
@@ -621,7 +649,11 @@ def logout(request):
             token=delete_target_token
         ).delete()
 
-        return common_response(success=True, message="로그아웃 성공", status=200)
+        response = common_response(success=True, message="로그아웃 성공", status=200)
+
+        response.delete_cookie('refresh_token', samesite='Lax')
+
+        return response
 
     except Exception as e:
         return common_response(success=True, message="로그아웃 처리됨")
