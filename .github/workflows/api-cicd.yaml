@@ -97,7 +97,7 @@ jobs:
       - name: Deploy to Private EC2 via SSM
         run: |
           # 1. 태그로 인스턴스 찾아서 할당하기
-          INSTANCE_ID=$(aws ec2 describe-instances \
+          INSTANCE_IDS=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=stagelog-ec2-backend" "Name=instance-state-name,Values=running" \
             --query "Reservations[*].Instances[*].InstanceId" \
             --output text)
@@ -108,20 +108,23 @@ jobs:
           fi
           
           # 2. SSM 연결 확인
-          echo "SSM Online 상태 확인 중..."
-          while true; do
-            STATUS=$(aws ssm describe-instance-information \
-            --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
-            --query "InstanceInformationList[0].PingStatus" \
-            --output text)
+          for INSTANCE_ID in $INSTANCE_IDS; do
+          echo "SSM 상태 확인: $INSTANCE_ID"
 
-            if [ "$STATUS" == "Online" ]; then
-              echo "SSM Agent Online 확인 완료!"
-              break
-            fi
+            while true; do
+              STATUS=$(aws ssm describe-instance-information \
+                --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+                --query "InstanceInformationList[0].PingStatus" \
+                --output text)
 
-            echo " 대기 중... (10초 후 재시도)"
-            sleep 10
+              if [ "$STATUS" == "Online" ]; then
+                echo "$INSTANCE_ID SSM Online"
+                break
+              fi
+
+              echo "대기 중..."
+              sleep 10
+            done
           done
           
           # 3. Base64 인코딩 (줄바꿈/특수문자 보호)
@@ -132,7 +135,7 @@ jobs:
           # 4. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           # 'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api' ssm으로 만들어진 폴더의 권한 변경
           aws ssm send-command \
-            --instance-ids $INSTANCE_ID \
+            --instance-ids $INSTANCE_IDS \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
@@ -181,6 +184,7 @@ jobs:
       #       --group-id ${{ secrets.AWS_SG_ID }} \
 
       #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
 
 
 
