@@ -303,12 +303,12 @@ def social_login(provider, provider_id, email=None):
 
             RefreshToken.objects.create(user=user, token=refresh_token)
             bookmarked_id = list(user.bookmarks.values_list('event_id', flat=True))
-            return common_response(
+
+            response = common_response(
                 success=True,
                 message=f"{user.nickname} 님! 환영합니다!",
                 data={
                     "access_token": jwt_access_token,
-                    "refresh_token": refresh_token,
                     "user": {
                         "id": user.user_id,
                         "nickname": user.nickname,
@@ -317,6 +317,16 @@ def social_login(provider, provider_id, email=None):
                     }
                 },
                 status=200)
+
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                samesite='Lax',
+                secure=False, #Http, Https를 사용하려면 True로 변경
+                max_age=60 * 60 * 24 * 14 # 2주
+            )
+            return response
         
         else:
             email = None # 카카오 비즈앱 아니면 이메일 못 가져올 수 있음
@@ -403,12 +413,11 @@ def signup(request):
         except Exception as e:
             return common_response(success=False, message="서버 내부 오류", status=500)
         
-        return common_response(
+        response = common_response(
             success=True,
             message="가입 완료", 
             data={
                 "access_token": access_token,
-                "refresh_token": refresh_token,
                 "user" : {
                     "id" : user.user_id,
                     "nickname": user.nickname,
@@ -418,6 +427,17 @@ def signup(request):
             },
             status=201
         )
+
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            samesite='Lax',
+            secure=False,
+            max_age=60 * 60 * 24 * 14
+        )
+        
+        return response
 
     except Exception as e:
         traceback.print_exc()
@@ -574,14 +594,12 @@ def update_user_profile(request):
 @require_POST
 def refresh_token_check(request):
     try:
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return common_response(success=False, message="잘못된 JSON 형식", status=400)
-
-        client_refresh_token = data.get('refresh_token')
+        # try:
+        #     data = json.loads(request.body)
+        # except json.JSONDecodeError:
+        #     return common_response(success=False, message="잘못된 JSON 형식", status=400)
+        client_refresh_token = request.COOKIES.get('refresh_token')
         
-
         if not client_refresh_token:
             return common_response(success=False, message="토큰이 없습니다.", status=400)
 
@@ -619,8 +637,9 @@ def refresh_token_check(request):
 @login_check
 def logout(request):
     try:
-        data = json.loads(request.body)
-        delete_target_token = data.get('refresh_token')
+        # data = json.loads(request.body)
+        # delete_target_token = data.get('refresh_token')
+        delete_target_token = request.COOKIES.get('refresh_token')
 
         if not delete_target_token:
             return common_response(success=False, message="삭제할 토큰이 없습니다.", status=400)
@@ -630,7 +649,11 @@ def logout(request):
             token=delete_target_token
         ).delete()
 
-        return common_response(success=True, message="로그아웃 성공", status=200)
+        response = common_response(success=True, message="로그아웃 성공", status=200)
+
+        response.delete_cookie('refresh_token', samesite='Lax')
+
+        return response
 
     except Exception as e:
         return common_response(success=True, message="로그아웃 처리됨")
