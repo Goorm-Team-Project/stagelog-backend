@@ -1,8 +1,8 @@
-name: Django API SERVER CI/CD
+name: Django API SERVER CI/CD ASG
 
 on:
   push:
-    branches: [ "develop" ] # 본인의 배포 브랜치명으로 수정
+    branches: [ "feature/cicd_terraform" ] # 본인의 배포 브랜치명으로 수정
   workflow_dispatch:
 
 jobs:
@@ -98,7 +98,7 @@ jobs:
         run: |
           # 1. 태그로 인스턴스 찾아서 할당하기
           INSTANCE_IDS=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=stagelog-ec2-backend" "Name=instance-state-name,Values=running" \
+            --filters "Name=tag:Name,Values=DEV-stagelog-ec2-backend" "Name=instance-state-name,Values=running" \
             --query "Reservations[*].Instances[*].InstanceId" \
             --output text)
           # 1-1. 인스턴스가 없다면 실행 중지
