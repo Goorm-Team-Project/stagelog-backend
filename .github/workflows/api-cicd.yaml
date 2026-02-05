@@ -47,9 +47,9 @@ jobs:
           echo "DEBUG=${{ secrets.DEBUG }}" >> .env
           echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
 
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL_MANAGED }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+          echo "DB_HOST=${{ secrets.DB_HOST_MANAGED }}" >> .env
           echo "DB_MODE=${{ secrets.DB_MODE }}" >> .env
 
           echo "KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}" >> .env
@@ -96,15 +96,43 @@ jobs:
       #SSM을 이용해서 env파일과 docker-compse.yml 전송 및 컨테이너 실행
       - name: Deploy to Private EC2 via SSM
         run: |
-          # 1. Base64 인코딩 (줄바꿈/특수문자 보호)
+          # 1. 태그로 인스턴스 찾아서 할당하기
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=stagelog-ec2-backend" "Name=instance-state-name,Values=running" \
+            --query "Reservations[*].Instances[*].InstanceId" \
+            --output text)
+          # 1-1. 인스턴스가 없다면 실행 중지
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "에러: 해당 태그를 가진 실행 중인 인스턴스를 찾을 수 없습니다."
+            exit 1
+          fi
+          
+          # 2. SSM 연결 확인
+          echo "SSM Online 상태 확인 중..."
+          while true; do
+            STATUS=$(aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+            --query "InstanceInformationList[0].PingStatus" \
+            --output text)
+
+            if [ "$STATUS" == "Online" ]; then
+              echo "SSM Agent Online 확인 완료!"
+              break
+            fi
+
+            echo " 대기 중... (10초 후 재시도)"
+            sleep 10
+          done
+          
+          # 3. Base64 인코딩 (줄바꿈/특수문자 보호)
           ENV_BASE64=$(base64 -w 0 .env)
           DOCKER_COMPOSE_BASE64=$(base64 -w 0 docker-compose.yml)
 
           
-          # 2. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
+          # 4. SSM 명령 전달 (파일 생성부터 실행까지 한 번에)
           # 'chown -R ec2-user:ec2-user /home/ec2-user/stagelog-api' ssm으로 만들어진 폴더의 권한 변경
           aws ssm send-command \
-            --instance-ids "${{ secrets.CICD_EC2_INSTANCE_ID }}" \
+            --instance-ids $INSTANCE_ID \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters "commands=[
@@ -151,4 +179,9 @@ jobs:
       #   run: |
       #     aws ec2 revoke-security-group-ingress \
       #       --group-id ${{ secrets.AWS_SG_ID }} \
+
       #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+
+
+
