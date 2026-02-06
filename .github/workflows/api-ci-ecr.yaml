@@ -35,7 +35,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: stagelog/stagelog-ecr # ⚠️ AWS ECR에서 만든 리포지토리 이름으로 수정하세요!
-        IMAGE_TAG: ${{ github.sha }}-${{ steps.current-time.outputs.formattedTime }} # 또는 ${{ github.sha }} 로 커밋별 태그 생성 가능
+        IMAGE_TAG: backend-${{ github.sha }}-${{ steps.current-time.outputs.formattedTime }} # 또는 ${{ github.sha }} 로 커밋별 태그 생성 가능
       run: |
         # -f 옵션으로 Dockerfile의 위치를 지정하고, 
         # 마지막의 . 은 빌드 컨텍스트(소스 코드 루트)를 의미합니다.
