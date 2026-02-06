@@ -45,7 +45,28 @@ jobs:
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
+    - name: Refresh ASG Instances
+      run: |
+        ASG_NAME="dev-stagelog-backend-asg"
+        
+        # 1. ASG가 실제로 존재하는지 확인
+        ASG_EXISTS=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-names "$ASG_NAME" \
+          --query 'AutoScalingGroups[0].AutoScalingGroupName' \
+          --output text)
 
+        if [ "$ASG_EXISTS" != "None" ] && [ "$ASG_EXISTS" != "" ]; then
+          echo "ASG '$ASG_NAME' 발견. Instance Refresh를 시작합니다..."
+          
+          # 2. Instance Refresh 실행
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage": 50}'
+            
+        else
+          echo "ASG '$ASG_NAME'을 찾을 수 없습니다. 인스턴스 갱신을 건너뜁니다."
+          exit 0
+        fi       
 
 
 
