@@ -1,6 +1,6 @@
 services:
   api:
-    image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/stagelog/stagelog-ecr:latest
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/stagelog/backend:latest
     container_name: stagelog-api
     environment:
       - PYTHONUNBUFFERED=1
