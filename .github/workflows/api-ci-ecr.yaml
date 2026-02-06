@@ -34,7 +34,7 @@ jobs:
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: stagelog/stagelog-ecr # ⚠️ AWS ECR에서 만든 리포지토리 이름으로 수정하세요!
+        ECR_REPOSITORY: stagelog/backend # ⚠️ AWS ECR에서 만든 리포지토리 이름으로 수정하세요!
         IMAGE_TAG: backend-${{ github.sha }}-${{ steps.current-time.outputs.formattedTime }} # 또는 ${{ github.sha }} 로 커밋별 태그 생성 가능
       run: |
         # -f 옵션으로 Dockerfile의 위치를 지정하고, 
@@ -44,6 +44,7 @@ jobs:
 
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
 
 
 
