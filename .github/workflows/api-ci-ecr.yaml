@@ -2,7 +2,7 @@ name: Django API SERVER CI To ECR
 
 on:
   push:
-    branches: [ "feature/cicd_terraform" ] 
+    branches: [ "develop" ] 
 jobs:
   deploy:
     name: Build Image
