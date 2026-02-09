@@ -156,5 +156,4 @@ S3_UPLOAD_BUCKET = env(
 S3_UPLOAD_PREFIX = env("S3_UPLOAD_PREFIX", default="uploads/")
 S3_PRESIGN_EXPIRES = env.int("S3_PRESIGN_EXPIRES", default=300)
 
-# <-- (추후 커스텀 도메인/CloudFront 대응용, 여기에 base URL 지정) -->
-# S3_PUBLIC_BASE_URL = env("S3_PUBLIC_BASE_URL", default=None)
+S3_PUBLIC_BASE_URL = env("S3_PUBLIC_BASE_URL", default=None)
