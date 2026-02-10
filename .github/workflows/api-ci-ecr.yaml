@@ -2,7 +2,9 @@ name: Django API SERVER CI To ECR
 
 on:
   push:
-    branches: [ "feature/cicd_terraform" ] 
+    branches: [ "feature/cicd_terraform" ]
+  workflow_dispatch:
+  
 jobs:
   deploy:
     name: Build Image
@@ -66,6 +68,7 @@ jobs:
           echo "ASG '$ASG_NAME'을 찾을 수 없습니다. 인스턴스 갱신을 건너뜁니다."
           exit 0
         fi       
+
 
 
 
