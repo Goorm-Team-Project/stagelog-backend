@@ -1,6 +1,6 @@
 import logging
 from django.http import JsonResponse
-from utils import common_response, get_client_ip
+from apps.common.utils import common_response, get_client_ip
 from django.conf import settings
 from django.core.cache import cache
 
