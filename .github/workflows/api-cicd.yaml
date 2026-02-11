@@ -73,7 +73,8 @@ jobs:
           echo "S3_UPLOAD_BUCKET=${{ secrets.S3_UPLOAD_BUCKET }}" >> .env          
           echo "S3_UPLOAD_PREFIX=${{ secrets.S3_UPLOAD_PREFIX }}" >> .env
           echo "S3_PRESIGN_EXPIRES=${{ secrets.S3_PRESIGN_EXPIRES }}" >> .env
-          
+          echo "S3_PUBLIC_BASE_URL=${{ secrets.S3_PUBLIC_BASE_URL }}" >> .env
+          echo "S3_UPLOAD_BUCKET=${{ secrets.S3_UPLOAD_BUCKET }}" >> .env
 
 
       # - name: Get GitHub Action IP
@@ -184,6 +185,7 @@ jobs:
       #       --group-id ${{ secrets.AWS_SG_ID }} \
 
       #       --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
 
 
 
