@@ -158,3 +158,27 @@ S3_PRESIGN_EXPIRES = env.int("S3_PRESIGN_EXPIRES", default=300)
 
 # <-- (추후 커스텀 도메인/CloudFront 대응용, 여기에 base URL 지정) -->
 # S3_PUBLIC_BASE_URL = env("S3_PUBLIC_BASE_URL", default=None)
+
+# 캐시 관련 설정
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        #'BACKEND': "django_redis.cache.RedisCache",
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# 로그 출력 설정
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',  # 핵심: 화면(Stream)에 출력
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',  # WARNING 이상(ERROR 포함)은 다 출력
+    },
+}
