@@ -1,0 +1,81 @@
+name: Django API SERVER CI To ECR
+
+on:
+  push:
+    branches: [ "feature/cicd_terraform" ]
+  workflow_dispatch:
+  
+jobs:
+  deploy:
+    name: Build Image
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Get current time
+      uses: josStorer/get-current-time@v2
+      id: current-time
+      with:
+          format: YYYYMMDD-HHmm
+          utcOffset: "+09:00"  
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: stagelog/backend # ⚠️ AWS ECR에서 만든 리포지토리 이름으로 수정하세요!
+        IMAGE_TAG: backend-${{ github.sha }}-${{ steps.current-time.outputs.formattedTime }} # 또는 ${{ github.sha }} 로 커밋별 태그 생성 가능
+      run: |
+        # -f 옵션으로 Dockerfile의 위치를 지정하고, 
+        # 마지막의 . 은 빌드 컨텍스트(소스 코드 루트)를 의미합니다.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f ./docker/api/Dockerfile .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Refresh ASG Instances
+      run: |
+        ASG_NAME="dev-stagelog-backend-asg"
+        
+        # 1. ASG가 실제로 존재하는지 확인
+        ASG_EXISTS=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-names "$ASG_NAME" \
+          --query 'AutoScalingGroups[0].AutoScalingGroupName' \
+          --output text)
+
+        if [ "$ASG_EXISTS" != "None" ] && [ "$ASG_EXISTS" != "" ]; then
+          echo "ASG '$ASG_NAME' 발견. Instance Refresh를 시작합니다..."
+          
+          # 2. Instance Refresh 실행
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage": 50}'
+            
+        else
+          echo "ASG '$ASG_NAME'을 찾을 수 없습니다. 인스턴스 갱신을 건너뜁니다."
+          exit 0
+        fi       
+
+        #
+
+
+
+
+
+
+
+
+
